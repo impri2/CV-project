@@ -2,7 +2,7 @@ import json
 import glob
 import os
 import cv2
-def load_images():
+def load_rendered_images():
     filenames=[]
     images=[]
     labels=[]

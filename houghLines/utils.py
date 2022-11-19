@@ -9,6 +9,7 @@ def get_intersection(rho1,theta1,rho2,theta2): #두 선의 교점
     line1 = Line(math.cos(theta1)*abc.x + math.sin(theta1)*abc.y -rho1)
     line2 = Line(math.cos(theta2)*abc.x + math.sin(theta2)*abc.y -rho2)
     intersection = line1.intersection(line2)
+    
     return intersection[0].coordinates
 def get_homography_from_four_coordinates(coordinates,sx,sy):#coordinates:4 x 2 list
     sorted_coordinates=sorted(coordinates)

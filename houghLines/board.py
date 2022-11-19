@@ -82,12 +82,15 @@ def get_homography(lines1,lines2,gamma=0.02):
                 break
         if len(max_inlier_set)>N//2:
             break
-    xmin,xmax,ymin,ymax = min([i[0] for i in max_inlier_warped]),max([i[0] for i in max_inlier_warped]),min([i[0] for i in max_inlier_warped]),max([i[0] for i in max_inlier_warped])
+    xmin,xmax,ymin,ymax = min([i[0] for i in max_inlier_warped]),max([i[0] for i in max_inlier_warped]),min([i[1] for i in max_inlier_warped]),max([i[1] for i in max_inlier_warped])
     for i in range(len(max_inlier_warped)):
-       max_inlier_warped[i]=( max_inlier_warped[i][0]-(xmin-1),  max_inlier_warped[i][1]-(ymin-1))# 최대 inliner 집합만 가지고 homography 구하기 전 모든 값을 음이 아니게 함
-    homography = cv2.findHomography(np.array(max_inlier_set,dtype=np.float32),80*np.array(max_inlier_warped,dtype=np.float32)+200)[0]
+       max_inlier_warped[i]=( max_inlier_warped[i][0]-(xmin),  max_inlier_warped[i][1]-(ymin))#xmin, ymin을 0으로 함
+    xmax-=xmin
+    ymax-=ymin
+    print(xmax,ymax)
+    homography = cv2.findHomography(np.array(max_inlier_set,dtype=np.float32),80*np.array(max_inlier_warped,dtype=np.float32)+640)[0]
    
-    return homography
+    return homography,xmax,ymax
 def get_lines(image):
     gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray,150,170)
@@ -116,8 +119,37 @@ def cluster_lines(lines):
         else:
              lines2.append(lines[i])
     return lines1,lines2
-
-
+#rectified 이미지로 보드 위치 구하기
+def get_board(image,xmax,ymax):
+    greyImage = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    edge = cv2.Canny(greyImage,100,140)
+   
+    xmin=0
+    ymin=0
+    while xmax-xmin<8:
+        xmax_edge=0
+        xmin_edge=0
+        for i in range(0,1920):
+            for j in range(-2,3):
+                xmax_edge+=edge[(xmax+1)*80+640+j,i]
+                xmin_edge+=edge[(xmin-1)*80+640+j,i]
+        if xmax_edge>xmin_edge:
+            xmax+=1
+        else:
+            xmin-=1
+        print(xmax,xmin)
+    while ymax-ymin<8:
+        ymax_edge=0
+        ymin_edge=0
+        for i in range(0,1920):
+            for j in range(-2,3):
+             ymax_edge+=edge[i,(ymax+1)*80+640+j]
+             ymin_edge+=edge[i,(ymin-1)*80+640+j]
+        if ymax_edge>ymin_edge:
+            ymax+=1
+        else:
+            ymin-=1
+    return xmin,xmax,ymin,ymax
 #구한 선과 교점을 그리기
 def draw_lines(image):
     lines = get_lines(image)
@@ -153,6 +185,46 @@ def draw_lines(image):
 def get_homography_from_image(image):
     lines = get_lines(image)
     lines1,lines2 = cluster_lines(lines)
-    homography = get_homography(lines1,lines2)
-    image = cv2.warpPerspective(image,homography,(800,1200))
+    homography,xmax,ymax = get_homography(lines1,lines2)
+    image = cv2.warpPerspective(image,homography,(1920,1920))
+    xmax=int(xmax)
+    ymax=int(ymax)
+    xmin=0
+    ymin=0
+    xmin,xmax,ymin,ymax = get_board(image,xmax,ymax)
+  
+    #cv2.line(image,(80*xmin+640,80*ymin+640),(80*xmax+640,80*ymin+640),(255,0,255),2)
+   # cv2.line(image,(80*xmin+640,80*ymax+640),(80*xmax+640,80*ymax+640),(255,0,255),2)
+   # cv2.line(image,(80*xmax+640,80*ymax+640),(80*xmax+640,80*ymin+640),(255,0,255),2)
+   # cv2.line(image,(80*xmin+640,80*ymin+640),(80*xmin+640,80*ymax+640),(255,0,255),2)
     return image
+    '''
+
+filenames,images,labels = dataset.load_images()
+for filename,image,label in zip(filenames,images,labels):
+    gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray,150,170)
+    lines = cv2.HoughLines(edges,1,np.pi/180,150)
+    thetas = []
+    dist = []
+    for i in range(len(lines)):
+        for rho,theta in lines[i]:
+            thetas.append(theta)
+    for i in range(len(lines)):
+        dist.append([])
+        for j in range(len(lines)):
+            dist[i].append(angle_distance(thetas[i],thetas[j]))
+    print(thetas)
+    cluster = AgglomerativeClustering(n_clusters=2,affinity='precomputed',linkage='average')
+    cluster.fit(dist)
+    print(cluster.labels_)
+    for i in range(len(lines)):
+        for rho, theta in lines[i]:
+            a = math.cos(theta)
+            b = math.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
+            pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
+            cv2.line(image, pt1, pt2, (0,0,255) if cluster.labels_[i] else (255,255,0), 1, cv2.LINE_AA)
+    cv2.imwrite(os.path.join('hough',filename[-4:]+'.png'),image)'''

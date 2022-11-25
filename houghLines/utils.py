@@ -3,6 +3,8 @@ from sympy import abc
 import numpy as np
 from cv2 import getPerspectiveTransform
 import math
+import cv2
+from skimage import filters
 def angle_distance(a,b):
     return min(abs(a-b),math.pi-abs(a-b))
 def get_intersection(rho1,theta1,rho2,theta2): #두 선의 교점
@@ -30,3 +32,41 @@ def get_mean_line(lines):
         rho+=line[0][0]
         theta+=line[0][1]
     return rho/len(lines),theta/len(lines)
+def canny_h(image):
+  
+  image = filters.gaussian(image,sigma=2)
+  edge = filters.sobel_h(image)
+  for i in range(edge.shape[0]):
+    for j in range(edge.shape[1]):
+      if edge[i,j]<0:
+       
+        edge[i,j]=-edge[i,j]  # sobel operator may have negative values
+  for i in range(1,edge.shape[0]-1):#Non max suppression
+    for j in range(1,edge.shape[1]-1):
+      
+      if edge[i+1,j]>edge[i,j]:
+        edge[i,j]=0
+      if edge[i-1,j]>edge[i,j]:
+        edge[i,j]=0
+    
+  edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
+  return edge
+def canny_v(image):
+  
+  image = filters.gaussian(image,sigma=2)
+  edge = filters.sobel_v(image)
+  for i in range(edge.shape[0]):
+    for j in range(edge.shape[1]):
+      if edge[i,j]<0:
+       
+        edge[i,j]=-edge[i,j]
+  for i in range(1,edge.shape[0]-1):
+    for j in range(1,edge.shape[1]-1):
+     
+      if edge[i,j+1]>edge[i,j]:
+        edge[i,j]=0
+      if edge[i,j-1]>edge[i,j]:
+        edge[i,j]=0
+     
+  edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
+  return edge

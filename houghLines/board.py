@@ -46,7 +46,7 @@ def get_homography(lines1,lines2,gamma=0.02):
     N = len(intersections)
     max_inlier_set=[]
     max_inlier_warped=[]
-    for x in range(30):
+    for x in range(30):#may be changed
         
         #임의로 가로선 2개, 세로선 2개 선택
         chosenLines1 = random.sample(lines1,2)
@@ -122,17 +122,18 @@ def cluster_lines(lines):
 #rectified 이미지로 보드 위치 구하기
 def get_board(image,xmax,ymax):
     greyImage = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    edge = cv2.Canny(greyImage,100,140)
-   
+    edgeH =  canny_h(greyImage)
+    edgeV = canny_v(greyImage)
+    
     xmin=0
     ymin=0
     while xmax-xmin<8:
         xmax_edge=0
         xmin_edge=0
-        for i in range(0,1920):
-            for j in range(-2,3):
-                xmax_edge+=edge[(xmax+1)*80+640+j,i]
-                xmin_edge+=edge[(xmin-1)*80+640+j,i]
+        for i in range(1920):
+            for j in range(-3,4):
+                xmax_edge+=edgeH[(xmax+1)*80+640,i]
+                xmin_edge+=edgeH[(xmin-1)*80+640,i]
         if xmax_edge>xmin_edge:
             xmax+=1
         else:
@@ -141,10 +142,10 @@ def get_board(image,xmax,ymax):
     while ymax-ymin<8:
         ymax_edge=0
         ymin_edge=0
-        for i in range(0,1920):
-            for j in range(-2,3):
-             ymax_edge+=edge[i,(ymax+1)*80+640+j]
-             ymin_edge+=edge[i,(ymin-1)*80+640+j]
+        for i in range(xmin*80+640,xmax*80+640):
+            for j in range(-3,4):
+             ymax_edge+=edgeV[i,(ymax+1)*80+640+j]
+             ymin_edge+=edgeV[i,(ymin-1)*80+640+j]
         if ymax_edge>ymin_edge:
             ymax+=1
         else:
@@ -197,7 +198,7 @@ def get_homography_from_image(image):
    # cv2.line(image,(80*xmin+640,80*ymax+640),(80*xmax+640,80*ymax+640),(255,0,255),2)
    # cv2.line(image,(80*xmax+640,80*ymax+640),(80*xmax+640,80*ymin+640),(255,0,255),2)
    # cv2.line(image,(80*xmin+640,80*ymin+640),(80*xmin+640,80*ymax+640),(255,0,255),2)
-    return image
+    return image,xmax,ymax
     '''
 
 filenames,images,labels = dataset.load_images()

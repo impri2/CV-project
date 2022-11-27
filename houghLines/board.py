@@ -46,7 +46,7 @@ def get_homography(lines1,lines2,gamma=0.02):
     N = len(intersections)
     max_inlier_set=[]
     max_inlier_warped=[]
-    for x in range(30):#may be changed
+    for x in range(100):#may be changed
         
         #임의로 가로선 2개, 세로선 2개 선택
         chosenLines1 = random.sample(lines1,2)
@@ -132,8 +132,10 @@ def get_board(image,xmax,ymax):
         xmin_edge=0
         for i in range(1920):
             for j in range(-3,4):
-                xmax_edge+=edgeH[(xmax+1)*80+640,i]
-                xmin_edge+=edgeH[(xmin-1)*80+640,i]
+                if 0<=(xmax+1)*80+640+j and (xmax+1)*80+640+j<1920:
+                 xmax_edge+=edgeH[(xmax+1)*80+640+j,i]
+                if 0<=(xmin-1)*80+640+j and (xmin-1)*80+640+j<1920:
+                 xmin_edge+=edgeH[(xmin-1)*80+640+j,i]
         if xmax_edge>xmin_edge:
             xmax+=1
         else:
@@ -142,10 +144,12 @@ def get_board(image,xmax,ymax):
     while ymax-ymin<8:
         ymax_edge=0
         ymin_edge=0
-        for i in range(xmin*80+640,xmax*80+640):
+        for i in range(1920):
             for j in range(-3,4):
-             ymax_edge+=edgeV[i,(ymax+1)*80+640+j]
-             ymin_edge+=edgeV[i,(ymin-1)*80+640+j]
+             if 0<=(ymax+1)*80+640+j and (ymax+1)*80+640+j<1920:
+              ymax_edge+=edgeV[i,(ymax+1)*80+640+j]
+             if 0<=(ymin-1)*80+640+j and (ymin-1)*80+640+j<1920:
+              ymin_edge+=edgeV[i,(ymin-1)*80+640+j]
         if ymax_edge>ymin_edge:
             ymax+=1
         else:

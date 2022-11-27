@@ -22,7 +22,7 @@ def load_rendered_images(path):
             labels.append(label)
 
             filenames.append(file[:-5])
-            if int(filenames[len(filenames)-1][-4:])>=100:
+            if int(filenames[len(filenames)-1][-4:])>=5:
                 break
        
     return filenames,images,labels

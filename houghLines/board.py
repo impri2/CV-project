@@ -6,9 +6,6 @@ import math
 import random
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import DBSCAN
-from sympy import Intersection
-from sympy import Line
-from sympy import abc
 
 from utils import *
 def get_intersections(lines1,lines2):
@@ -46,8 +43,8 @@ def get_homography(lines1,lines2,gamma=0.02):
     N = len(intersections)
     max_inlier_set=[]
     max_inlier_warped=[]
-    for x in range(100):#may be changed
-        
+
+    for x in range(20):#may be changed
         #임의로 가로선 2개, 세로선 2개 선택
         chosenLines1 = random.sample(lines1,2)
         chosenLines2 = random.sample(lines2,2)
@@ -82,12 +79,14 @@ def get_homography(lines1,lines2,gamma=0.02):
                 break
         if len(max_inlier_set)>N//2:
             break
+
     xmin,xmax,ymin,ymax = min([i[0] for i in max_inlier_warped]),max([i[0] for i in max_inlier_warped]),min([i[1] for i in max_inlier_warped]),max([i[1] for i in max_inlier_warped])
     for i in range(len(max_inlier_warped)):
        max_inlier_warped[i]=( max_inlier_warped[i][0]-(xmin),  max_inlier_warped[i][1]-(ymin))#xmin, ymin을 0으로 함
     xmax-=xmin
     ymax-=ymin
     print(xmax,ymax)
+
     homography = cv2.findHomography(np.array(max_inlier_set,dtype=np.float32),80*np.array(max_inlier_warped,dtype=np.float32)+640)[0]
    
     return homography,xmax,ymax
@@ -192,6 +191,7 @@ def get_homography_from_image(image):
     lines1,lines2 = cluster_lines(lines)
     homography,xmax,ymax = get_homography(lines1,lines2)
     image = cv2.warpPerspective(image,homography,(1920,1920))
+
     xmax=int(xmax)
     ymax=int(ymax)
     xmin=0

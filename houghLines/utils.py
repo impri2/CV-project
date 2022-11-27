@@ -7,12 +7,18 @@ import cv2
 from skimage import filters
 def angle_distance(a,b):
     return min(abs(a-b),math.pi-abs(a-b))
+
 def get_intersection(rho1,theta1,rho2,theta2): #두 선의 교점
-    line1 = Line(math.cos(theta1)*abc.x + math.sin(theta1)*abc.y -rho1)
-    line2 = Line(math.cos(theta2)*abc.x + math.sin(theta2)*abc.y -rho2)
-    intersection = line1.intersection(line2)
-    
-    return intersection[0].coordinates
+    # assume two lines are not parallel
+    # intersection between a1x + b1y + c1 = 0 and a2x + b2y + c2 = 0
+    a1, b1, c1 = math.cos(theta1), math.sin(theta1), -rho1
+    a2, b2, c2 = math.cos(theta2), math.sin(theta2), -rho2
+
+    x = (b1*c2 - b2*c1) / (a1*b2 - a2*b1)
+    y = (a2*c1 - a1*c2) / (a1*b2 - a2*b1)
+
+    return [x, y]
+
 def get_homography_from_four_coordinates(coordinates,sx,sy):#coordinates:4 x 2 list
     sorted_coordinates=sorted(coordinates)
     dest_coordinates=[]
@@ -36,37 +42,29 @@ def canny_h(image):
   
   image = filters.gaussian(image,sigma=2)
   edge = filters.sobel_h(image)
-  for i in range(edge.shape[0]):
-    for j in range(edge.shape[1]):
-      if edge[i,j]<0:
+
+  edge = np.abs(edge)
        
-        edge[i,j]=-edge[i,j]  # sobel operator may have negative values
   for i in range(1,edge.shape[0]-1):#Non max suppression
     for j in range(1,edge.shape[1]-1):
       
-      if edge[i+1,j]>edge[i,j]:
+      if edge[i+1,j]>edge[i,j] or edge[i-1,j]>edge[i,j]:
         edge[i,j]=0
-      if edge[i-1,j]>edge[i,j]:
-        edge[i,j]=0
-    
+
   edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
   return edge
 def canny_v(image):
   
   image = filters.gaussian(image,sigma=2)
   edge = filters.sobel_v(image)
-  for i in range(edge.shape[0]):
-    for j in range(edge.shape[1]):
-      if edge[i,j]<0:
-       
-        edge[i,j]=-edge[i,j]
+
+  edge = np.abs(edge)
+
   for i in range(1,edge.shape[0]-1):
     for j in range(1,edge.shape[1]-1):
      
-      if edge[i,j+1]>edge[i,j]:
+      if edge[i,j+1]>edge[i,j] or edge[i,j-1]>edge[i,j]:
         edge[i,j]=0
-      if edge[i,j-1]>edge[i,j]:
-        edge[i,j]=0
-     
+
   edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
   return edge

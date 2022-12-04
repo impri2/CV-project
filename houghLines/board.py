@@ -43,8 +43,50 @@ def get_homography(lines1,lines2,gamma=0.02):
     N = len(intersections)
     max_inlier_set=[]
     max_inlier_warped=[]
+    
+    lines1.sort(key=lambda line:math.cos(line[0][1])/line[0][0])
+    lines2.sort(key=lambda line:math.cos(line[0][1])/line[0][0])# 선 정렬
+    
+    for X in range(len(lines1)-1):# 정렬순으로 선택하기
+     for Y in range(len(lines2)-1):
+        chosenLines1 = lines1[X:X+2]
+        chosenLines2 = lines2[Y:Y+2]
+        line_intersection = []
+        for line1 in chosenLines1:# 선택한 선의 교점
+            for line2 in chosenLines2:
+                line_intersection.append(get_intersection(line1[0][0],line1[0][1],line2[0][0],line2[0][1]))
+        
+        for sx in range(1,9):
+            for sy in range(1,9): #구한 교점이 이루는 사각형이 1x1, 1x2 ... 8x8크기라고 가정하고 homography를 구함
+                inliers=[]
+                inliers_warped=[]
+                
+                homography = get_homography_from_four_coordinates(line_intersection,sx,sy)
+                
+                for i in range(N): #모든 교점에 대해 warp
+                  
+                  warped= homography @ np.array([[intersections[i][0]],[intersections[i][1]],[1]])
+                  warped/=warped[2]
+                 
+                  dist = math.hypot(warped[0][0]-round(warped[0][0]),warped[1][0]-round(warped[1][0]))#한 칸이 1x1크기가 되도록 warp 했으므로 inlier는 좌표가 정수에 가까워야 함
+                  if dist<gamma: #가장 가까운 정수좌표로부터 거리가 gamma 이하라면 inlier에 추가
+                      inliers.append(intersections[i])
+                      inliers_warped.append((round(warped[0][0]),round(warped[1][0])))
+                
+                if len(inliers)>len(max_inlier_set):
+                    max_inlier_set = inliers 
+                    max_inlier_warped = inliers_warped
+                #최대 inlier수가 N/2에 도달할 때까지 반복
+                if len(max_inlier_set)>N//2:
+                     break
+            if len(max_inlier_set)>N//2:
+                break
+        if len(max_inlier_set)>N//2:
+            break
+    for x in range(100):#may be changed
+        if len(max_inlier_set)>N//2:
+            break
 
-    for x in range(20):#may be changed
         #임의로 가로선 2개, 세로선 2개 선택
         chosenLines1 = random.sample(lines1,2)
         chosenLines2 = random.sample(lines2,2)
@@ -93,9 +135,9 @@ def get_homography(lines1,lines2,gamma=0.02):
 def get_lines(image):
     gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray,150,170)
-    lines = cv2.HoughLines(edges,1,np.pi/180,150)
+    lines = cv2.HoughLines(edges,1,np.pi/180,10)
     
-    return lines
+    return lines[:min(20,len(lines))]
 #선을 가로선 세로선으로 clustering
 def cluster_lines(lines):
     thetas = []
@@ -233,3 +275,4 @@ for filename,image,label in zip(filenames,images,labels):
             pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
             cv2.line(image, pt1, pt2, (0,0,255) if cluster.labels_[i] else (255,255,0), 1, cv2.LINE_AA)
     cv2.imwrite(os.path.join('hough',filename[-4:]+'.png'),image)'''
+

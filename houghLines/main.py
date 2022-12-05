@@ -1,4 +1,4 @@
-from board import draw_lines,get_homography_from_image,get_board
+from board import detect_board
 from dataset import load_rendered_images
 import cv2
 import os
@@ -21,19 +21,24 @@ homography matrix 찾을 때 반복 횟수는 board.py 49번 줄의 수를 바�
 '''
 
 def main(argv):
-    filenames,images,labels = load_rendered_images(argv[0] if len(argv) > 0 else None)
-    
-    for filename,image,label in tqdm(zip(filenames,images,labels), total=len(filenames)):
-      image,xmax,ymax = get_homography_from_image(image)
-      
-      cv2.imwrite(os.path.join('homography',filename[-4:]+'.png'),image)
-      
-      xmin,xmax,ymin,ymax=get_board(image,xmax,ymax)
-      cv2.line(image,(80*ymin+640,80*xmin+640),(80*ymax+640,80*xmin+640),(255,0,255),2)
-      cv2.line(image,(80*ymin+640,80*xmax+640),(80*ymax+640,80*xmax+640),(255,0,255),2)
-      cv2.line(image,(80*ymax+640,80*xmax+640),(80*ymax+640,80*xmin+640),(255,0,255),2)
-      cv2.line(image,(80*ymin+640,80*xmin+640),(80*ymin+640,80*xmax+640),(255,0,255),2)
-      cv2.imwrite( os.path.join('board',filename[-4:]+'.png'),image)
+    filenames, images, labels = load_rendered_images(argv[0] if len(argv) > 0 else None)
+
+    t = tqdm(zip(filenames, images, labels), total=len(filenames))
+
+    for filename, image, label in t:
+        t.set_description("Processing: " + filename)
+
+        warped_image, H, corners = detect_board(image)
+
+        cv2.imwrite(os.path.join('homography', filename[-4:]+'.png'), warped_image)
+
+        x1, y1, x2, y2 = corners
+        cv2.line(warped_image, (x1, y1), (x2, y1), (255, 0, 255), 2)
+        cv2.line(warped_image, (x1, y1), (x1, y2), (255, 0, 255), 2)
+        cv2.line(warped_image, (x2, y1), (x2, y2), (255, 0, 255), 2)
+        cv2.line(warped_image, (x1, y2), (x2, y2), (255, 0, 255), 2)
+
+        cv2.imwrite(os.path.join('board', filename[-4:]+'.png'), warped_image)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

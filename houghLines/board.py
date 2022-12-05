@@ -8,12 +8,14 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import DBSCAN
 
 from utils import *
+
 def get_intersections(lines1,lines2):
     coordinates = []
     for line1 in lines1:
         for line2 in lines2:  
             coordinates.append(get_intersection(line1[0][0],line1[0][1],line2[0][0],line2[0][1]))
     return coordinates
+
 def merge_lines(lines1,lines2):
     #lines2를 merge하는 함수
     intersections=[]
@@ -33,9 +35,10 @@ def merge_lines(lines1,lines2):
                 check.add(cluster.labels_[i])
                 mergedLines.append(lines2[i])
 
-    print(cluster.labels_)
-    print(intersections)
+    # print(cluster.labels_)
+    # print(intersections)
     return mergedLines
+
 def get_homography(lines1,lines2,gamma=0.02):
     lines2 = merge_lines(lines1,lines2)
     lines1 = merge_lines(lines2,lines1)
@@ -127,17 +130,19 @@ def get_homography(lines1,lines2,gamma=0.02):
        max_inlier_warped[i]=( max_inlier_warped[i][0]-(xmin),  max_inlier_warped[i][1]-(ymin))#xmin, ymin을 0으로 함
     xmax-=xmin
     ymax-=ymin
-    print(xmax,ymax)
+    # print(xmax,ymax)
 
     homography = cv2.findHomography(np.array(max_inlier_set,dtype=np.float32),80*np.array(max_inlier_warped,dtype=np.float32)+640)[0]
    
     return homography,xmax,ymax
+
 def get_lines(image):
     gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray,150,170)
     lines = cv2.HoughLines(edges,1,np.pi/180,10)
     
     return lines[:min(20,len(lines))]
+
 #선을 가로선 세로선으로 clustering
 def cluster_lines(lines):
     thetas = []
@@ -160,10 +165,12 @@ def cluster_lines(lines):
         else:
              lines2.append(lines[i])
     return lines1,lines2
-#rectified 이미지로 보드 위치 구하기
-def get_board(image,xmax,ymax):
+
+# rectified 이미지로 보드 위치 구하기
+# returns real corner coordinate (x1, y1, x2, y2) on 1920x1920 image
+def get_board(image, xmax, ymax):
     greyImage = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    edgeH =  canny_h(greyImage)
+    edgeH = canny_h(greyImage)
     edgeV = canny_v(greyImage)
     
     xmin=0
@@ -181,7 +188,7 @@ def get_board(image,xmax,ymax):
             xmax+=1
         else:
             xmin-=1
-        print(xmax,xmin)
+        # print(xmax,xmin)
     while ymax-ymin<8:
         ymax_edge=0
         ymin_edge=0
@@ -195,7 +202,11 @@ def get_board(image,xmax,ymax):
             ymax+=1
         else:
             ymin-=1
-    return xmin,xmax,ymin,ymax
+
+    print((xmin, ymin, xmax, ymax))
+    # convert to real coordinate on 1920 x 1920 image
+    return np.array((xmin, ymin, xmax, ymax)) * 80 + 640
+
 #구한 선과 교점을 그리기
 def draw_lines(image):
     lines = get_lines(image)
@@ -214,6 +225,7 @@ def draw_lines(image):
             cv2.line(image, pt1, pt2, (0,0,255) , 1, cv2.LINE_AA)
     
     cv2.line(image, pt1, pt2, (0,0,255) , 1, cv2.LINE_AA)
+
     for i in range(len(lines2)):
         rho, theta = lines2[i][0]
         a = math.cos(theta)
@@ -223,56 +235,40 @@ def draw_lines(image):
         pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
         pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
         cv2.line(image, pt1, pt2, (0,255,0) , 1, cv2.LINE_AA)
+
     intersections = get_intersections(lines1,lines2)
+
     for intersection in intersections:
-        
         cv2.circle(image,(int(intersection[0]),int(intersection[1])),3,(255,0,255),1)
+
     return image
+
+# input: image
+# output: homography, xmax, ymax
+# xmax and ymax is right-bottom corner coordinate for naively detected board
 def get_homography_from_image(image):
     lines = get_lines(image)
-    lines1,lines2 = cluster_lines(lines)
-    homography,xmax,ymax = get_homography(lines1,lines2)
-    image = cv2.warpPerspective(image,homography,(1920,1920))
+    lines1, lines2 = cluster_lines(lines)
+    homography, xmax, ymax = get_homography(lines1, lines2)
 
-    xmax=int(xmax)
-    ymax=int(ymax)
-    xmin=0
-    ymin=0
-    xmin,xmax,ymin,ymax = get_board(image,xmax,ymax)
-  
-    #cv2.line(image,(80*xmin+640,80*ymin+640),(80*xmax+640,80*ymin+640),(255,0,255),2)
-   # cv2.line(image,(80*xmin+640,80*ymax+640),(80*xmax+640,80*ymax+640),(255,0,255),2)
-   # cv2.line(image,(80*xmax+640,80*ymax+640),(80*xmax+640,80*ymin+640),(255,0,255),2)
-   # cv2.line(image,(80*xmin+640,80*ymin+640),(80*xmin+640,80*ymax+640),(255,0,255),2)
-    return image,xmax,ymax
-    '''
+    return homography, xmax, ymax
 
-filenames,images,labels = dataset.load_images()
-for filename,image,label in zip(filenames,images,labels):
-    gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray,150,170)
-    lines = cv2.HoughLines(edges,1,np.pi/180,150)
-    thetas = []
-    dist = []
-    for i in range(len(lines)):
-        for rho,theta in lines[i]:
-            thetas.append(theta)
-    for i in range(len(lines)):
-        dist.append([])
-        for j in range(len(lines)):
-            dist[i].append(angle_distance(thetas[i],thetas[j]))
-    print(thetas)
-    cluster = AgglomerativeClustering(n_clusters=2,affinity='precomputed',linkage='average')
-    cluster.fit(dist)
-    print(cluster.labels_)
-    for i in range(len(lines)):
-        for rho, theta in lines[i]:
-            a = math.cos(theta)
-            b = math.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-            pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
-            pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-            cv2.line(image, pt1, pt2, (0,0,255) if cluster.labels_[i] else (255,255,0), 1, cv2.LINE_AA)
-    cv2.imwrite(os.path.join('hough',filename[-4:]+'.png'),image)'''
+# output: warp_image, homography, corner_coordinates
+# warped image: warped image
+# homography: 3x3 homography matrix from input image to warped image
+# corner_coordinates: four corners on the warped image (x1, y1, x2, y2)
+#                     where (x1, y1) is top-left, (x2, y2) is bottom-right corner
+def detect_board(image, debug = False):
+    # this xmax, ymax is prematurely computed board boarder (right-bottom lines)
+    # to convert to real coordinate: xmax * 80 + 640
+    homography, xmax, ymax = get_homography_from_image(image)
+
+    warped_image = cv2.warpPerspective(image, homography, (1920, 1920))
+
+    corners = get_board(warped_image, int(xmax), int(ymax))
+    print(corners)
+
+    return warped_image, homography, corners
+
+
 

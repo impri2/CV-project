@@ -5,6 +5,7 @@ from cv2 import getPerspectiveTransform
 import math
 import cv2
 from skimage import filters
+
 def angle_distance(a,b):
     return min(abs(a-b),math.pi-abs(a-b))
 
@@ -31,6 +32,7 @@ def get_homography_from_four_coordinates(coordinates,sx,sy):#coordinates:4 x 2 l
     else:
         dest_coordinates.append([[sx,sy],[sx,0]])
     return getPerspectiveTransform(np.array(sorted_coordinates,dtype=np.float32).reshape(4,1,2),np.array(dest_coordinates,dtype=np.float32).reshape(4,1,2),)
+
 def get_mean_line(lines):
     rho=0
     theta=0
@@ -38,6 +40,7 @@ def get_mean_line(lines):
         rho+=line[0][0]
         theta+=line[0][1]
     return rho/len(lines),theta/len(lines)
+
 def canny_h(image):
   
   image = filters.gaussian(image,sigma=2)
@@ -53,6 +56,7 @@ def canny_h(image):
 
   edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
   return edge
+
 def canny_v(image):
   
   image = filters.gaussian(image,sigma=2)
@@ -68,3 +72,15 @@ def canny_v(image):
 
   edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
   return edge
+
+# open cv2 image then wait until key q is pressed or window is closed
+# taken from: https://medium.com/@mh_yip/opencv-detect-whether-a-window-is-closed-or-close-by-press-x-button-ee51616f7088
+def open_wait_cv2_window(window_name, image):
+    cv2.imshow(window_name, image)
+
+    wait_time = 10000
+    while cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) >= 1:
+        keyCode = cv2.waitKey(wait_time)
+        if (keyCode & 0xFF) == ord("q"):
+            cv2.destroyAllWindows()
+            break

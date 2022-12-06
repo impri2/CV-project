@@ -39,10 +39,8 @@ def merge_lines(lines1,lines2):
     # print(intersections)
     return mergedLines
 
-def get_homography(lines1,lines2,gamma=0.02):
-    lines2 = merge_lines(lines1,lines2)
-    lines1 = merge_lines(lines2,lines1)
-    intersections = get_intersections(lines1,lines2)
+def get_homography(lines1, lines2, gamma=0.02):
+    intersections = get_intersections(lines1, lines2)
     N = len(intersections)
     max_inlier_set=[]
     max_inlier_warped=[]
@@ -58,26 +56,25 @@ def get_homography(lines1,lines2,gamma=0.02):
         for line1 in chosenLines1:# 선택한 선의 교점
             for line2 in chosenLines2:
                 line_intersection.append(get_intersection(line1[0][0],line1[0][1],line2[0][0],line2[0][1]))
-        
+
         for sx in range(1,9):
             for sy in range(1,9): #구한 교점이 이루는 사각형이 1x1, 1x2 ... 8x8크기라고 가정하고 homography를 구함
                 inliers=[]
                 inliers_warped=[]
-                
+
                 homography = get_homography_from_four_coordinates(line_intersection,sx,sy)
-                
+
                 for i in range(N): #모든 교점에 대해 warp
-                  
-                  warped= homography @ np.array([[intersections[i][0]],[intersections[i][1]],[1]])
-                  warped/=warped[2]
-                 
-                  dist = math.hypot(warped[0][0]-round(warped[0][0]),warped[1][0]-round(warped[1][0]))#한 칸이 1x1크기가 되도록 warp 했으므로 inlier는 좌표가 정수에 가까워야 함
-                  if dist<gamma: #가장 가까운 정수좌표로부터 거리가 gamma 이하라면 inlier에 추가
-                      inliers.append(intersections[i])
-                      inliers_warped.append((round(warped[0][0]),round(warped[1][0])))
-                
+                    warped= homography @ np.array([[intersections[i][0]],[intersections[i][1]],[1]])
+                    warped/=warped[2]
+
+                    dist = math.hypot(warped[0][0]-round(warped[0][0]),warped[1][0]-round(warped[1][0]))#한 칸이 1x1크기가 되도록 warp 했으므로 inlier는 좌표가 정수에 가까워야 함
+                    if dist<gamma: #가장 가까운 정수좌표로부터 거리가 gamma 이하라면 inlier에 추가
+                        inliers.append(intersections[i])
+                        inliers_warped.append((round(warped[0][0]),round(warped[1][0])))
+
                 if len(inliers)>len(max_inlier_set):
-                    max_inlier_set = inliers 
+                    max_inlier_set = inliers
                     max_inlier_warped = inliers_warped
                 #최대 inlier수가 N/2에 도달할 때까지 반복
                 if len(max_inlier_set)>N//2:
@@ -86,7 +83,9 @@ def get_homography(lines1,lines2,gamma=0.02):
                 break
         if len(max_inlier_set)>N//2:
             break
-    for x in range(100):#may be changed
+
+    iter = 150
+    for x in range(iter):#may be changed
         if len(max_inlier_set)>N//2:
             break
 
@@ -136,11 +135,16 @@ def get_homography(lines1,lines2,gamma=0.02):
    
     return homography,xmax,ymax
 
-def get_lines(image):
-    gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray,150,170)
-    lines = cv2.HoughLines(edges,1,np.pi/180,10)
-    
+def get_lines(image, debug=False):
+    img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    img_blur = cv2.blur(img_gray, (3, 3))
+    canny = cv2.Canny(img_blur, threshold1=120, threshold2=150)
+
+    if debug:
+        open_wait_cv2_window("canny", canny)
+
+    lines = cv2.HoughLines(canny, 1, np.pi / 180, threshold=100)
+
     return lines[:min(20,len(lines))]
 
 #선을 가로선 세로선으로 clustering
@@ -208,47 +212,33 @@ def get_board(image, xmax, ymax):
     return np.array((xmin, ymin, xmax, ymax)) * 80 + 640
 
 #구한 선과 교점을 그리기
-def draw_lines(image):
-    lines = get_lines(image)
-    lines1,lines2 = cluster_lines(lines)
-    lines2 = merge_lines(lines1,lines2)
-    lines1 = merge_lines(lines2,lines1)
-    
-    for i in range(len(lines1)):
-            rho, theta = lines1[i][0]
+def draw_lines(image, lines1, lines2):
+
+    for seq in (lines1, lines2):
+        for i in range(len(seq)):
+            rho, theta = seq[i][0]
             a = math.cos(theta)
             b = math.sin(theta)
             x0 = a * rho
             y0 = b * rho
-            pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
-            pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-            cv2.line(image, pt1, pt2, (0,0,255) , 1, cv2.LINE_AA)
-    
-    cv2.line(image, pt1, pt2, (0,0,255) , 1, cv2.LINE_AA)
-
-    for i in range(len(lines2)):
-        rho, theta = lines2[i][0]
-        a = math.cos(theta)
-        b = math.sin(theta)
-        x0 = a * rho
-        y0 = b * rho
-        pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
-        pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-        cv2.line(image, pt1, pt2, (0,255,0) , 1, cv2.LINE_AA)
-
-    intersections = get_intersections(lines1,lines2)
-
-    for intersection in intersections:
-        cv2.circle(image,(int(intersection[0]),int(intersection[1])),3,(255,0,255),1)
+            pt1 = (int(x0 - 1000*b), int(y0 + 1000*a))
+            pt2 = (int(x0 + 1000*b), int(y0 - 1000*a))
+            cv2.line(image, pt1, pt2, (0,0,255), 1, cv2.LINE_AA)
 
     return image
 
 # input: image
 # output: homography, xmax, ymax
 # xmax and ymax is right-bottom corner coordinate for naively detected board
-def get_homography_from_image(image):
-    lines = get_lines(image)
+def get_homography_from_image(image, debug=False):
+    lines = get_lines(image, debug=debug)
     lines1, lines2 = cluster_lines(lines)
+    lines2 = merge_lines(lines1,lines2)
+    lines1 = merge_lines(lines2,lines1)
+
+    if debug:
+        open_wait_cv2_window("lines", draw_lines(image, lines1, lines2))
+
     homography, xmax, ymax = get_homography(lines1, lines2)
 
     return homography, xmax, ymax
@@ -258,10 +248,10 @@ def get_homography_from_image(image):
 # homography: 3x3 homography matrix from input image to warped image
 # corner_coordinates: four corners on the warped image (x1, y1, x2, y2)
 #                     where (x1, y1) is top-left, (x2, y2) is bottom-right corner
-def detect_board(image, debug = False):
+def detect_board(image, debug=False):
     # this xmax, ymax is prematurely computed board boarder (right-bottom lines)
     # to convert to real coordinate: xmax * 80 + 640
-    homography, xmax, ymax = get_homography_from_image(image)
+    homography, xmax, ymax = get_homography_from_image(image, debug=debug)
 
     warped_image = cv2.warpPerspective(image, homography, (1920, 1920))
 

@@ -26,17 +26,32 @@ def merge_lines(lines1,lines2):
 
     cluster = DBSCAN(eps=20,min_samples=2)
     cluster.fit(intersections)#교점과 가까운 것기리 merge됨
-    check = set()
+    label_cnt = {}
+    rho_sum = {}
+    angle_sum = {}
 
+    # collect lines with same labels and average them
     for i in range(len(lines2)):
-        if cluster.labels_[i]==-1:
+        if cluster.labels_[i] == -1: # not labeled
             mergedLines.append(lines2[i])
         else:
-            if cluster.labels_[i] in check: #각 cluster의 첫 선만 포함 (-1을 분류되지 않은 것)
-                continue
-            else:
-                check.add(cluster.labels_[i])
-                mergedLines.append(lines2[i])
+            label = cluster.labels_[i]
+
+            if not label in label_cnt:
+                label_cnt[label] = 0
+                rho_sum[label] = 0
+                angle_sum[label] = 0
+
+            label_cnt[label] += 1
+            rho_sum[label] += lines2[i][0][0]
+            angle_sum[label] += lines2[i][0][1]
+
+    # calculate average line
+    for i in label_cnt:
+        rho = rho_sum[i] / label_cnt[i]
+        theta = (angle_sum[i] / label_cnt[i]) % math.pi
+        new_line = np.array([[rho, theta]])  # (1, 2) dimension for some reason
+        mergedLines.append(new_line)
 
     # print(cluster.labels_)
     # print(intersections)
@@ -51,7 +66,7 @@ def get_homography(lines1, lines2, gamma=0.02):
     lines1.sort(key=lambda line:math.cos(line[0][1])/line[0][0])
     lines2.sort(key=lambda line:math.cos(line[0][1])/line[0][0])# 선 정렬
 
-    max_cell_size = 5
+    max_cell_size = 4
 
     for X in range(len(lines1)-1):# 정렬순으로 선택하기
         for Y in range(len(lines2)-1):
@@ -159,7 +174,11 @@ def get_lines(image, debug=False):
 
     lines = cv2.HoughLines(canny, 1, np.pi / 180, threshold=100)
 
-    return lines[:min(20,len(lines))]
+    # ideally, 8x8 board consists of 9+9 lines
+    # but consider cluster of similar lines which are to be merged
+    max_lines = 30
+
+    return lines[:min(max_lines,len(lines))]
 
 #선을 가로선 세로선으로 clustering
 def cluster_lines(lines):

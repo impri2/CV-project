@@ -55,6 +55,11 @@ def merge_lines(lines1,lines2):
     for i in label_cnt:
         rho = rho_sum[i] / label_cnt[i]
         theta = (angle_sum[i] / label_cnt[i]) % (2 * math.pi)
+
+        if theta > math.pi:
+            theta -= math.pi
+            rho = -rho
+
         new_line = np.array([[rho, theta]])  # (1, 2) dimension for some reason
         mergedLines.append(new_line)
 
@@ -108,7 +113,7 @@ def get_homography(lines1, lines2, gamma=0.02):
             if len(max_inlier_set)>N//2:
                 break
 
-    iter = 150
+    iter = 300
     for x in range(iter):
         if len(max_inlier_set) > N//2:
             break
@@ -171,8 +176,8 @@ def get_lines(image, debug=False):
     img_blur = cv2.blur(img_gray, (3, 3))
     canny = cv2.Canny(img_blur, threshold1=120, threshold2=150)
 
-    if debug:
-        open_wait_cv2_window("canny", canny)
+    # if debug:
+    #     open_wait_cv2_window("canny", canny)
 
     lines = cv2.HoughLines(canny, 1, np.pi / 180, threshold=100)
 
@@ -282,10 +287,14 @@ def get_homography_from_image(image, debug=False):
     lines1.sort(key=cmp)
     lines2.sort(key=cmp)
 
+    homography, xmax, ymax = get_homography(lines1, lines2)
+
     if debug:
         open_wait_cv2_window("lines_merged", draw_lines(image.copy(), lines1, lines2))
-
-    homography, xmax, ymax = get_homography(lines1, lines2)
+        if xmax > 15 or ymax > 15: # this is very unlikely to happen
+            print("Something has gone wrong with lines")
+            print(lines1)
+            print(lines2)
 
     return homography, xmax, ymax
 
@@ -298,6 +307,9 @@ def detect_board(image, debug=False):
     # this xmax, ymax is prematurely computed board boarder (right-bottom lines)
     # to convert to real coordinate: xmax * 80 + 640
     homography, xmax, ymax = get_homography_from_image(image, debug=debug)
+
+    if debug:
+        print("premature xmax, ymax = %d, %d" % (int(xmax), int(ymax)))
 
     warped_image = cv2.warpPerspective(image, homography, (1920, 1920))
 

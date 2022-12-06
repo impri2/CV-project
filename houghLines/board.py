@@ -4,6 +4,7 @@ import dataset
 import numpy as np
 import math
 import random
+from functools import cmp_to_key
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import DBSCAN
 
@@ -49,7 +50,7 @@ def merge_lines(lines1,lines2):
     # calculate average line
     for i in label_cnt:
         rho = rho_sum[i] / label_cnt[i]
-        theta = (angle_sum[i] / label_cnt[i]) % math.pi
+        theta = (angle_sum[i] / label_cnt[i]) % (2 * math.pi)
         new_line = np.array([[rho, theta]])  # (1, 2) dimension for some reason
         mergedLines.append(new_line)
 
@@ -62,9 +63,6 @@ def get_homography(lines1, lines2, gamma=0.02):
     N = len(intersections)
     max_inlier_set=[]
     max_inlier_warped=[]
-    
-    lines1.sort(key=lambda line:math.cos(line[0][1])/line[0][0])
-    lines2.sort(key=lambda line:math.cos(line[0][1])/line[0][0])# 선 정렬
 
     max_cell_size = 4
 
@@ -256,7 +254,7 @@ def draw_lines(image, lines1, lines2):
             y0 = b * rho
             pt1 = (int(x0 - 1000*b), int(y0 + 1000*a))
             pt2 = (int(x0 + 1000*b), int(y0 - 1000*a))
-            cv2.line(image, pt1, pt2, (0,0,255), 1, cv2.LINE_AA)
+            cv2.line(image, pt1, pt2, (0, 20 * i % 256, (255 - 20 * i) % 256), 1, cv2.LINE_AA)
 
     return image
 
@@ -266,9 +264,15 @@ def draw_lines(image, lines1, lines2):
 def get_homography_from_image(image, debug=False):
     lines = get_lines(image, debug=debug)
 
+    # cluster into vertical and horizontal and merge similar ones
     lines1, lines2 = cluster_lines(lines)
     lines2 = merge_lines(lines1,lines2)
     lines1 = merge_lines(lines2,lines1)
+
+    # sort lines so that neighboring lines are adjacent in the list
+    cmp = lambda line: line[0][0] if line[0][1] <= math.pi/2 else -line[0][0]
+    lines1.sort(key=cmp)
+    lines2.sort(key=cmp)
 
     if debug:
         open_wait_cv2_window("lines", draw_lines(image.copy(), lines1, lines2))

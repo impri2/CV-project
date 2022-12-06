@@ -44,8 +44,12 @@ def merge_lines(lines1,lines2):
                 angle_sum[label] = 0
 
             label_cnt[label] += 1
-            rho_sum[label] += lines2[i][0][0]
-            angle_sum[label] += lines2[i][0][1]
+            if lines2[i][0][0] < 0: # always consider rho to be positive
+                rho_sum[label] += -lines2[i][0][0]
+                angle_sum[label] += lines2[i][0][1] + math.pi
+            else:
+                rho_sum[label] += lines2[i][0][0]
+                angle_sum[label] += lines2[i][0][1]
 
     # calculate average line
     for i in label_cnt:
@@ -266,6 +270,10 @@ def get_homography_from_image(image, debug=False):
 
     # cluster into vertical and horizontal and merge similar ones
     lines1, lines2 = cluster_lines(lines)
+
+    if debug:
+        open_wait_cv2_window("lines", draw_lines(image.copy(), lines1, lines2))
+
     lines2 = merge_lines(lines1,lines2)
     lines1 = merge_lines(lines2,lines1)
 
@@ -275,7 +283,7 @@ def get_homography_from_image(image, debug=False):
     lines2.sort(key=cmp)
 
     if debug:
-        open_wait_cv2_window("lines", draw_lines(image.copy(), lines1, lines2))
+        open_wait_cv2_window("lines_merged", draw_lines(image.copy(), lines1, lines2))
 
     homography, xmax, ymax = get_homography(lines1, lines2)
 

@@ -73,7 +73,7 @@ def get_homography(lines1, lines2, gamma=0.02):
     max_inlier_set=[]
     max_inlier_warped=[]
 
-    max_cell_size = 4
+    max_cell_size = 5
 
     for X in range(len(lines1)-1):# 정렬순으로 선택하기
         for Y in range(len(lines2)-1):
@@ -172,12 +172,10 @@ def get_homography(lines1, lines2, gamma=0.02):
     return homography, xmax, ymax
 
 def get_lines(image, debug=False):
-    img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    img_blur = cv2.blur(img_gray, (3, 3))
-    canny = cv2.Canny(img_blur, threshold1=120, threshold2=150)
+    canny = cv2.Canny(image, threshold1=120, threshold2=150)
 
-    # if debug:
-    #     open_wait_cv2_window("canny", canny)
+    if debug:
+        open_wait_cv2_window("canny", canny)
 
     lines = cv2.HoughLines(canny, 1, np.pi / 180, threshold=100)
 
@@ -213,9 +211,8 @@ def cluster_lines(lines):
 # rectified 이미지로 보드 위치 구하기
 # returns real corner coordinate (x1, y1, x2, y2) on 1920x1920 image
 def get_board(image, xmax, ymax):
-    greyImage = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    edgeH = canny_h(greyImage)
-    edgeV = canny_v(greyImage)
+    edgeH = canny_h(image)
+    edgeV = canny_v(image)
     
     xmin=0
     ymin=0
@@ -251,22 +248,6 @@ def get_board(image, xmax, ymax):
     # convert to real coordinate on 1920 x 1920 image
     return np.array((xmin, ymin, xmax, ymax)) * 80 + 640
 
-#구한 선과 교점을 그리기
-def draw_lines(image, lines1, lines2):
-
-    for seq in (lines1, lines2):
-        for i in range(len(seq)):
-            rho, theta = seq[i][0]
-            a = math.cos(theta)
-            b = math.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-            pt1 = (int(x0 - 1000*b), int(y0 + 1000*a))
-            pt2 = (int(x0 + 1000*b), int(y0 - 1000*a))
-            cv2.line(image, pt1, pt2, (0, 20 * i % 256, (255 - 20 * i) % 256), 1, cv2.LINE_AA)
-
-    return image
-
 # input: image
 # output: homography, xmax, ymax
 # xmax and ymax is right-bottom corner coordinate for naively detected board
@@ -300,7 +281,7 @@ def get_homography_from_image(image, debug=False):
 
 # rescale image so that width * height is fixed
 def resize_img(image):
-    res = (1200 * 800) * 0.9
+    res = (1200 * 800) * 0.5
 
     h, w, _ = image.shape
 
@@ -315,16 +296,19 @@ def resize_img(image):
 # corner_coordinates: four corners on the warped image (x1, y1, x2, y2)
 #                     where (x1, y1) is top-left, (x2, y2) is bottom-right corner
 def detect_board(image, debug=False):
+    # apply some preprocessing: resize, denoise, turn to grayscale
     image = resize_img(image)
+    img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    img_blur = cv2.blur(img_gray, (3, 3))
 
     # this xmax, ymax is prematurely computed board boarder (right-bottom lines)
     # to convert to real coordinate: xmax * 80 + 640
-    homography, xmax, ymax = get_homography_from_image(image, debug=debug)
+    homography, xmax, ymax = get_homography_from_image(img_blur, debug=debug)
 
     if debug:
         print("premature xmax, ymax = %d, %d" % (int(xmax), int(ymax)))
 
-    warped_image = cv2.warpPerspective(image, homography, (1920, 1920))
+    warped_image = cv2.warpPerspective(img_blur, homography, (1920, 1920))
 
     corners = get_board(warped_image, int(xmax), int(ymax))
     print(corners)

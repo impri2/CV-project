@@ -7,7 +7,8 @@ import random
 from functools import cmp_to_key
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import DBSCAN
-
+import torch
+import torchvision
 from utils import *
 
 def get_intersections(lines1,lines2):

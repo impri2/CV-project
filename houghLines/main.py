@@ -9,7 +9,7 @@ from skimage import filters
 import numpy as np
 from skimage import img_as_ubyte
 import torch
-import model
+import model as model
 import torchvision.transforms
 from PIL import Image
 '''
@@ -29,7 +29,7 @@ def main(argv):
     filenames, images,labels = load_images(argv[0] if len(argv) > 0 else None)
     trained_model = model.ChessModel().to(DEVICE)
     
-    trained_model.load_state_dict(torch.load('ChessModel4.pth',map_location=torch.device(DEVICE)))
+    trained_model.load_state_dict(torch.load('ChessModel5.pth',map_location=torch.device(DEVICE)))
     trained_model.eval()
     t = tqdm(zip(filenames, images), total=len(filenames))
 
@@ -65,7 +65,7 @@ def main(argv):
         cv2.line(warped_image, (x1, y2), (x2, y2), (255, 0, 255), 2)
         
         
-        cv2.imwrite(os.path.join('board', filename),warped_image)       
+        cv2.imwrite(os.path.join('board2', filename),warped_image)       
 if __name__ == "__main__":
     main(sys.argv[1:])
     #print(torch.cuda.is_available())

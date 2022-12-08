@@ -2,7 +2,7 @@ import json
 import glob
 import os
 import cv2
-
+import pathlib
 def load_rendered_images(path):
     filenames=[]
     images=[]

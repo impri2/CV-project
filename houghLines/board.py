@@ -174,11 +174,8 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
    
     return homography, xmax, ymax
 
-def get_lines(image, debug=False):
-    canny = cv2.Canny(image, threshold1=120, threshold2=150)
-
-    if debug:
-        open_wait_cv2_window("canny", canny)
+# get lines from canny edge image
+def get_lines(canny, debug=False):
 
     lines = cv2.HoughLines(canny, 1, np.pi / 180, threshold=100)
 
@@ -213,9 +210,9 @@ def cluster_lines(lines):
 
 # rectified 이미지로 보드 위치 구하기
 # returns real corner coordinate (x1, y1, x2, y2) on 1920x1920 image
-def get_board(image, xmax, ymax, H_inv, h_original, w_original, debug=False):
-    edgeH = canny_h(image, debug=debug)
-    edgeV = canny_v(image, debug=debug)
+def get_board(image, canny, xmax, ymax, debug=False):
+    # edgeH = canny_h(image, debug=debug)
+    # edgeV = canny_v(image, debug=debug)
     
     xmin=0
     ymin=0
@@ -225,23 +222,14 @@ def get_board(image, xmax, ymax, H_inv, h_original, w_original, debug=False):
     search_range = 2
 
     def inBound(x, y):
-        # 1. check array bound
-        if (not 0 <= x < img_size) or (not 0 <= y < img_size):
-            return False
+        return 0 <= x < img_size and 0 <= y < img_size
 
-        # 2. check if the point goes outsize of the original image
-        nx, ny, nw = H_inv @ np.array([x, y, 1])
-        nx /= nw
-        ny /= nw
-
-        print(nx)
-        print(ny)
-
-        pad = 3  # disallow detecting edge that was created by homography (image border)
-        if (not pad <= nx < h_original - pad) or (not pad <= ny < w_original - pad):
-            return False
-
-        return True
+    if debug:
+        open_wait_cv2_window("corners",
+                             cv2.resize(
+                                 draw_corners(canny,
+                                              np.array([xmin, ymin, xmax, ymax]) * cell_size + offset),
+                                 (0, 0), fx=0.5, fy=0.5))
 
     while xmax - xmin < 8:
         xmax_edge = 0
@@ -249,25 +237,25 @@ def get_board(image, xmax, ymax, H_inv, h_original, w_original, debug=False):
         for i in range(img_size):
             for j in range(-search_range, search_range + 1):
                 next_x = (xmax + 1) * cell_size + offset + j
-                prev_x = (xmax - 1) * cell_size + offset + j
-                if inBound(next_x, i):
-                    xmax_edge += edgeH[next_x, i]
-                if inBound(prev_x, i):
-                    xmin_edge += edgeH[prev_x, i]
+                prev_x = (xmin - 1) * cell_size + offset + j
+                if inBound(i, next_x):
+                    xmax_edge += canny[i, next_x]
+                if inBound(i, prev_x):
+                    xmin_edge += canny[i, prev_x]
 
         if xmax_edge > xmin_edge:
             xmax += 1
         else:
             xmin -= 1
+        # print(xmax,xmin)
 
         if debug:
-            print("%d %d" % (xmax_edge, xmin_edge))
+            print("xvoting: %d %d" % (xmax_edge, xmin_edge))
             open_wait_cv2_window("corners",
                                  cv2.resize(
-                                     draw_corners(image,
+                                     draw_corners(canny,
                                                   np.array([xmin, ymin, xmax, ymax]) * cell_size + offset),
-                                 (0, 0), fx=0.5, fy=0.5))
-        # print(xmax,xmin)
+                                     (0, 0), fx=0.5, fy=0.5))
 
     # noinspection DuplicatedCode
     while ymax - ymin < 8:
@@ -276,11 +264,11 @@ def get_board(image, xmax, ymax, H_inv, h_original, w_original, debug=False):
         for i in range(img_size):
             for j in range(-search_range, search_range + 1):
                 next_y = (ymax + 1) * cell_size + offset + j
-                prev_y = (ymax - 1) * cell_size + offset + j
-                if inBound(i, next_y):
-                    ymax_edge += edgeH[i, next_y]
-                if inBound(i, prev_y):
-                    ymin_edge += edgeH[i, prev_y]
+                prev_y = (ymin - 1) * cell_size + offset + j
+                if inBound(next_y, i):
+                    ymax_edge += canny[next_y, i]
+                if inBound(prev_y, i):
+                    ymin_edge += canny[prev_y, i]
 
         if ymax_edge > ymin_edge:
             ymax += 1
@@ -288,10 +276,10 @@ def get_board(image, xmax, ymax, H_inv, h_original, w_original, debug=False):
             ymin -= 1
 
         if debug:
-            print("%d %d" % (ymax_edge, ymin_edge))
+            print("yvoting: %d %d" % (ymax_edge, ymin_edge))
             open_wait_cv2_window("corners",
                                  cv2.resize(
-                                     draw_corners(image,
+                                     draw_corners(canny,
                                                   np.array([xmin, ymin, xmax, ymax]) * cell_size + offset),
                                      (0, 0), fx=0.5, fy=0.5))
         # print(xmax,xmin)
@@ -303,14 +291,14 @@ def get_board(image, xmax, ymax, H_inv, h_original, w_original, debug=False):
 # input: image
 # output: homography, xmax, ymax
 # xmax and ymax is right-bottom corner coordinate for naively detected board
-def get_homography_from_image(image, debug=False):
-    lines = get_lines(image, debug=debug)
+def get_homography_from_image(canny, debug=False):
+    lines = get_lines(canny, debug=debug)
 
     # cluster into vertical and horizontal and merge similar ones
     lines1, lines2 = cluster_lines(lines)
 
     if debug:
-        open_wait_cv2_window("lines", draw_lines(image.copy(), lines1, lines2))
+        open_wait_cv2_window("lines", draw_lines(canny.copy(), lines1, lines2))
 
     lines2 = merge_lines(lines1,lines2)
     lines1 = merge_lines(lines2,lines1)
@@ -323,7 +311,7 @@ def get_homography_from_image(image, debug=False):
     homography, xmax, ymax = get_homography(lines1, lines2)
 
     if debug:
-        open_wait_cv2_window("lines_merged", draw_lines(image.copy(), lines1, lines2))
+        open_wait_cv2_window("lines_merged", draw_lines(canny.copy(), lines1, lines2))
         if xmax > 15 or ymax > 15: # this is very unlikely to happen
             print("Something has gone wrong with lines")
             print(lines1)
@@ -348,24 +336,30 @@ def resize_img(image):
 # corner_coordinates: four corners on the warped image (x1, y1, x2, y2)
 #                     where (x1, y1) is top-left, (x2, y2) is bottom-right corner
 def detect_board(image, debug=False):
-    # apply some preprocessing: resize, denoise, turn to grayscale
+    # apply some preprocessing
     image = resize_img(image)
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.blur(img_gray, (3, 3))
+    canny = cv2.Canny(img_blur, threshold1=120, threshold2=150)
+
+    if debug:
+        open_wait_cv2_window("canny", canny)
 
     h, w = img_blur.shape
 
     # this xmax, ymax is prematurely computed board boarder (right-bottom lines)
     # to convert to real coordinate: xmax * 80 + 640
-    homography, xmax, ymax = get_homography_from_image(img_blur, debug=debug)
+    homography, xmax, ymax = get_homography_from_image(canny, debug=debug)
 
     if debug:
         print("premature xmax, ymax = %d, %d" % (int(xmax), int(ymax)))
 
-    warped_image = cv2.warpPerspective(img_blur, homography, (1920, 1920))
+    warp_size = 1920
 
-    H_inv = np.linalg.inv(homography)
-    corners = get_board(warped_image, int(xmax), int(ymax), H_inv, h, w, debug=debug)
+    warped_image = cv2.warpPerspective(img_blur, homography, (warp_size, warp_size))
+    warped_canny = cv2.warpPerspective(canny, homography, (warp_size, warp_size))
+
+    corners = get_board(warped_image, warped_canny, int(xmax), int(ymax), debug=debug)
     print(corners)
 
     return warped_image, homography, corners

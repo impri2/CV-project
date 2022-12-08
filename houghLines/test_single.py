@@ -18,7 +18,8 @@ def main(argv):
     img_name = os.path.splitext(os.path.basename(img_path))[0]
     img = cv2.imread(img_path)
 
-    warped_image, H, corners = detect_board(img, debug=True)
+    debug = True
+    warped_image, H, corners = detect_board(img, debug=debug)
 
     x1, y1, x2, y2 = corners
     cv2.line(warped_image, (x1, y1), (x2, y1), (255, 0, 255), 2)

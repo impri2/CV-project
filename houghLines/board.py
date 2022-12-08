@@ -298,12 +298,25 @@ def get_homography_from_image(image, debug=False):
 
     return homography, xmax, ymax
 
+# rescale image so that width * height is fixed
+def resize_img(image):
+    res = (1200 * 800) * 0.9
+
+    h, w, _ = image.shape
+
+    scale = math.sqrt(res / (h * w))
+    new_dim = (int(scale * w), int(scale * h)) # be cautious: format is (width, height)
+
+    return cv2.resize(image, new_dim, interpolation=cv2.INTER_AREA)
+
 # output: warp_image, homography, corner_coordinates
 # warped image: warped image
 # homography: 3x3 homography matrix from input image to warped image
 # corner_coordinates: four corners on the warped image (x1, y1, x2, y2)
 #                     where (x1, y1) is top-left, (x2, y2) is bottom-right corner
 def detect_board(image, debug=False):
+    image = resize_img(image)
+
     # this xmax, ymax is prematurely computed board boarder (right-bottom lines)
     # to convert to real coordinate: xmax * 80 + 640
     homography, xmax, ymax = get_homography_from_image(image, debug=debug)

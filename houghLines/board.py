@@ -318,5 +318,41 @@ def detect_board(image, debug=False):
 
     return warped_image, homography, corners
 
+# Model input:
+# 224 x 224 image
+#model output:
+# whether the image's center is a square in 6 x 6 center region of the board.
+# square at the edge of the board is not considered square by this model.
+def get_board_by_dl(device,model,image):
+        transform = torchvision.transforms.ToTensor()
+        image_batch = torch.zeros((21,21,3,224,224))
+        for i in range(120,1800,80): # get image slices for each potential square center
+            for j in range(120,1800,80):
+                
+                image_batch[(i-120)//80,(j-120)//80,:,:,:]=transform(cv2.cvtColor(image[i-112:i+112,j-112:j+112],cv2.COLOR_BGR2RGB))
+        with torch.no_grad():       
+            prediction = model(image_batch.reshape(-1,3,224,224).to(device))
+        prediction = torch.argmax(prediction.reshape(21,21,2),dim=2).to('cpu')# 1: square 0:no square
+        maxi,maxj,maxsum=0,0,0
+        for i in range(15):
+            for j in range(15):# get the 6 x 6 region that contains square the most
+                if torch.sum(prediction[i:i+6,j:j+6])>maxsum:
+                    maxi=i
+                    maxj=j
+                    maxsum=torch.sum(prediction[i:i+6,j:j+6])
+        return maxj*80,maxi*80,maxj*80+640,maxi*80+640 # same output format as the detect_board function
 
+
+
+# input, output is almost same as detect_board function, except it also gets model and device parameter.
+
+def detect_board_by_dl(image,model,device):
+    homography, xmax, ymax = get_homography_from_image(image)
+
+    warped_image = cv2.warpPerspective(image, homography, (1920, 1920))
+
+    corners = get_board_by_dl(device,model,warped_image)
+    print(corners)
+
+    return warped_image, homography, corners
 

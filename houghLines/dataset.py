@@ -26,3 +26,16 @@ def load_rendered_images(path):
                 break
        
     return filenames,images,labels
+def load_images(path): #does not require json file
+    files = glob.glob(os.path.join(path,"*.jpg"))
+    files.extend(glob.glob(os.path.join(path,"*.png")))
+    files.sort(reverse=True)
+    images=[]
+    filenames=[]
+    for i,file in enumerate(files):
+        images.append(cv2.imread(file))
+        pathlib.Path(file).name
+        filenames.append(pathlib.Path(file).name)
+        if i>100:
+            break
+    return filenames,images,None

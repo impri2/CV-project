@@ -42,36 +42,32 @@ def get_mean_line(lines):
     return rho/len(lines),theta/len(lines)
 
 def canny_h(image):
-  
-  image = filters.gaussian(image,sigma=2)
-  edge = filters.sobel_h(image)
+    image = filters.gaussian(image,sigma=2)
+    edge = filters.sobel_h(image)
 
-  edge = np.abs(edge)
+    edge = np.abs(edge)
        
-  for i in range(1,edge.shape[0]-1):#Non max suppression
-    for j in range(1,edge.shape[1]-1):
-      
-      if edge[i+1,j]>edge[i,j] or edge[i-1,j]>edge[i,j]:
-        edge[i,j]=0
+    for i in range(1,edge.shape[0]-1): #Non max suppression
+        for j in range(1,edge.shape[1]-1):
+            if edge[i+1,j]>edge[i,j] or edge[i-1,j]>edge[i,j]:
+                edge[i,j]=0
 
-  edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
-  return edge
+    edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
+    return edge
 
 def canny_v(image):
-  
-  image = filters.gaussian(image,sigma=2)
-  edge = filters.sobel_v(image)
+    image = filters.gaussian(image,sigma=2)
+    edge = filters.sobel_v(image)
 
-  edge = np.abs(edge)
+    edge = np.abs(edge)
 
-  for i in range(1,edge.shape[0]-1):
-    for j in range(1,edge.shape[1]-1):
-     
-      if edge[i,j+1]>edge[i,j] or edge[i,j-1]>edge[i,j]:
-        edge[i,j]=0
+    for i in range(1,edge.shape[0]-1):
+        for j in range(1,edge.shape[1]-1):
+            if edge[i,j+1]>edge[i,j] or edge[i,j-1]>edge[i,j]:
+                edge[i,j]=0
 
-  edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
-  return edge
+    edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
+    return edge
 
 # open cv2 image then wait until key q is pressed or window is closed
 # taken from: https://medium.com/@mh_yip/opencv-detect-whether-a-window-is-closed-or-close-by-press-x-button-ee51616f7088

@@ -67,7 +67,7 @@ def merge_lines(lines1,lines2):
     # print(intersections)
     return mergedLines
 
-def get_homography(lines1, lines2, gamma=0.02):
+def get_homography(lines1, lines2, gamma=0.02, debug=False):
     intersections = get_intersections(lines1, lines2)
     N = len(intersections)
     max_inlier_set=[]
@@ -164,9 +164,10 @@ def get_homography(lines1, lines2, gamma=0.02):
         # set xmin, ymin by moving the lines accordingly
         max_inlier_warped[i] = (max_inlier_warped[i][0] - (xmin),  max_inlier_warped[i][1] - (ymin))
 
+    print("premature corners before adjusting: %d %d %d %d" % (xmin, ymin, xmax, ymax))
+
     xmax -= xmin
     ymax -= ymin
-    # print(xmax,ymax)
 
     homography = cv2.findHomography(np.array(max_inlier_set,dtype=np.float32),
                                     80*np.array(max_inlier_warped,dtype=np.float32)+640)[0]
@@ -232,7 +233,12 @@ def get_board(image, xmax, ymax, H_inv, h_original, w_original, debug=False):
         nx, ny, nw = H_inv @ np.array([x, y, 1])
         nx /= nw
         ny /= nw
-        if (not 0 <= nx < h_original) or (not 0 <= ny < w_original):
+
+        print(nx)
+        print(ny)
+
+        pad = 3  # disallow detecting edge that was created by homography (image border)
+        if (not pad <= nx < h_original - pad) or (not pad <= ny < w_original - pad):
             return False
 
         return True

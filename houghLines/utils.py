@@ -41,32 +41,47 @@ def get_mean_line(lines):
         theta+=line[0][1]
     return rho/len(lines),theta/len(lines)
 
-def canny_h(image):
-    image = filters.gaussian(image,sigma=2)
-    edge = filters.sobel_h(image)
+canny_hysteresis_threshold1 = 0.01
+canny_hysteresis_threshold2 = 0.03
 
-    edge = np.abs(edge)
-       
+def canny_h(image, debug=False):
+    edge = np.abs(filters.sobel_h(image))
+    edge_nms = np.copy(edge)
+
     for i in range(1,edge.shape[0]-1): #Non max suppression
         for j in range(1,edge.shape[1]-1):
             if edge[i+1,j]>edge[i,j] or edge[i-1,j]>edge[i,j]:
-                edge[i,j]=0
+                edge_nms[i,j]=0
 
-    edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
+    edge = edge_nms
+    edge = filters.apply_hysteresis_threshold(
+        edge,
+        canny_hysteresis_threshold1,
+        canny_hysteresis_threshold2)
+
+    if debug:
+        open_wait_cv2_window("canny_h", edge)
+
     return edge
 
-def canny_v(image):
-    image = filters.gaussian(image,sigma=2)
-    edge = filters.sobel_v(image)
-
-    edge = np.abs(edge)
+def canny_v(image, debug=False):
+    edge = np.abs(filters.sobel_v(image))
+    edge_nms = np.copy(edge)
 
     for i in range(1,edge.shape[0]-1):
         for j in range(1,edge.shape[1]-1):
             if edge[i,j+1]>edge[i,j] or edge[i,j-1]>edge[i,j]:
-                edge[i,j]=0
+                edge_nms[i,j]=0
 
-    edge = filters.apply_hysteresis_threshold(edge,0.01,0.03)
+    edge = edge_nms
+    edge = filters.apply_hysteresis_threshold(
+        edge,
+        canny_hysteresis_threshold1,
+        canny_hysteresis_threshold2)
+
+    if debug:
+        open_wait_cv2_window("canny_v", edge)
+
     return edge
 
 # open cv2 image then wait until key q is pressed or window is closed
@@ -80,3 +95,32 @@ def open_wait_cv2_window(window_name, image):
         if (keyCode & 0xFF) == ord("q"):
             cv2.destroyAllWindows()
             break
+
+def draw_corners(image, corners):
+    if len(image.shape) < 3:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+
+    x1, y1, x2, y2 = corners
+    cv2.line(image, (x1, y1), (x2, y1), (255, 0, 255), 2)
+    cv2.line(image, (x1, y1), (x1, y2), (255, 0, 255), 2)
+    cv2.line(image, (x2, y1), (x2, y2), (255, 0, 255), 2)
+    cv2.line(image, (x1, y2), (x2, y2), (255, 0, 255), 2)
+
+    return image
+
+def draw_lines(image, lines1, lines2):
+    if len(image.shape) < 3:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+
+    for seq in (lines1, lines2):
+        for i in range(len(seq)):
+            rho, theta = seq[i][0]
+            a = math.cos(theta)
+            b = math.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            pt1 = (int(x0 - 1000 * b), int(y0 + 1000 * a))
+            pt2 = (int(x0 + 1000 * b), int(y0 - 1000 * a))
+            cv2.line(image, pt1, pt2, (0, 20 * i % 256, (255 - 20 * i) % 256), 1, cv2.LINE_AA)
+
+    return image

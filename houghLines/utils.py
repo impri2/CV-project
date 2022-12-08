@@ -41,46 +41,56 @@ def get_mean_line(lines):
         theta+=line[0][1]
     return rho/len(lines),theta/len(lines)
 
-canny_hysteresis_threshold1 = 0.01
-canny_hysteresis_threshold2 = 0.03
+canny_hysteresis_threshold1 = 5
+canny_hysteresis_threshold2 = 10
 
-def canny_h(image, debug=False):
-    edge = np.abs(filters.sobel_h(image))
+# detect vertical lines
+def canny_v(image, debug=False):
+    edge = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=5)  # x sobel
+    edge /= (1 + 2 + 0 + 2 + 1) * (1 + 4 + 6 + 4 + 1)  # normalize by sobel filter size
+    edge = np.abs(edge)
+
+    # Non max suppression
     edge_nms = np.copy(edge)
-
-    for i in range(1,edge.shape[0]-1): #Non max suppression
-        for j in range(1,edge.shape[1]-1):
-            if edge[i+1,j]>edge[i,j] or edge[i-1,j]>edge[i,j]:
-                edge_nms[i,j]=0
+    for i in range(1, edge.shape[0]-1):
+        for j in range(1, edge.shape[1]-1):
+            if edge[i, j + 1] > edge[i, j] or edge[i, j - 1] > edge[i, j]:
+                edge_nms[i, j] = 0
 
     edge = edge_nms
+
     edge = filters.apply_hysteresis_threshold(
         edge,
         canny_hysteresis_threshold1,
         canny_hysteresis_threshold2)
 
     if debug:
-        open_wait_cv2_window("canny_h", edge)
+        open_wait_cv2_window("canny_vertical", cv2.resize(edge.astype('uint8') * 255, (0,0), fx=0.5, fy=0.5))
 
     return edge
 
-def canny_v(image, debug=False):
-    edge = np.abs(filters.sobel_v(image))
-    edge_nms = np.copy(edge)
+# detect horizontal lines
+def canny_h(image, debug=False):
+    edge = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=5)  # y sobel
+    edge /= (1 + 2 + 0 + 2 + 1) * (1 + 4 + 6 + 4 + 1)  # normalize by sobel filter size
+    edge = np.abs(edge)
 
-    for i in range(1,edge.shape[0]-1):
-        for j in range(1,edge.shape[1]-1):
-            if edge[i,j+1]>edge[i,j] or edge[i,j-1]>edge[i,j]:
-                edge_nms[i,j]=0
+    # Non max suppression
+    edge_nms = np.copy(edge)
+    for i in range(1, edge.shape[0] - 1):
+        for j in range(1, edge.shape[1] - 1):
+            if edge[i + 1, j] > edge[i, j] or edge[i - 1, j] > edge[i, j]:
+                edge_nms[i, j] = 0
 
     edge = edge_nms
+
     edge = filters.apply_hysteresis_threshold(
         edge,
         canny_hysteresis_threshold1,
         canny_hysteresis_threshold2)
 
     if debug:
-        open_wait_cv2_window("canny_v", edge)
+        open_wait_cv2_window("canny_horizontal", cv2.resize(edge.astype('uint8') * 255, (0, 0), fx=0.5, fy=0.5))
 
     return edge
 

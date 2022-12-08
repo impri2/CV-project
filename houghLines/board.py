@@ -210,9 +210,9 @@ def cluster_lines(lines):
 
 # rectified 이미지로 보드 위치 구하기
 # returns real corner coordinate (x1, y1, x2, y2) on 1920x1920 image
-def get_board(image, xmax, ymax):
-    edgeH = canny_h(image)
-    edgeV = canny_v(image)
+def get_board(image, xmax, ymax, debug=False):
+    edgeH = canny_h(image, debug=debug)
+    edgeV = canny_v(image, debug=debug)
     
     xmin=0
     ymin=0
@@ -310,7 +310,7 @@ def detect_board(image, debug=False):
 
     warped_image = cv2.warpPerspective(img_blur, homography, (1920, 1920))
 
-    corners = get_board(warped_image, int(xmax), int(ymax))
+    corners = get_board(warped_image, int(xmax), int(ymax), debug=debug)
     print(corners)
 
     return warped_image, homography, corners

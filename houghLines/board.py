@@ -161,13 +161,15 @@ def get_homography(lines1, lines2, gamma=0.02):
                              max([i[1] for i in max_inlier_warped])
 
     for i in range(len(max_inlier_warped)):
-        max_inlier_warped[i]=( max_inlier_warped[i][0]-(xmin),  max_inlier_warped[i][1]-(ymin)) # xmin, ymin을 0으로 함
+        # set xmin, ymin by moving the lines accordingly
+        max_inlier_warped[i] = (max_inlier_warped[i][0] - (xmin),  max_inlier_warped[i][1] - (ymin))
 
     xmax -= xmin
     ymax -= ymin
     # print(xmax,ymax)
 
-    homography = cv2.findHomography(np.array(max_inlier_set,dtype=np.float32),80*np.array(max_inlier_warped,dtype=np.float32)+640)[0]
+    homography = cv2.findHomography(np.array(max_inlier_set,dtype=np.float32),
+                                    80*np.array(max_inlier_warped,dtype=np.float32)+640)[0]
    
     return homography, xmax, ymax
 
@@ -210,43 +212,87 @@ def cluster_lines(lines):
 
 # rectified 이미지로 보드 위치 구하기
 # returns real corner coordinate (x1, y1, x2, y2) on 1920x1920 image
-def get_board(image, xmax, ymax, debug=False):
+def get_board(image, xmax, ymax, H_inv, h_original, w_original, debug=False):
     edgeH = canny_h(image, debug=debug)
     edgeV = canny_v(image, debug=debug)
     
     xmin=0
     ymin=0
-    while xmax-xmin<8:
-        xmax_edge=0
-        xmin_edge=0
-        for i in range(1920):
-            for j in range(-3,4):
-                if 0<=(xmax+1)*80+640+j and (xmax+1)*80+640+j<1920:
-                 xmax_edge+=edgeH[(xmax+1)*80+640+j,i]
-                if 0<=(xmin-1)*80+640+j and (xmin-1)*80+640+j<1920:
-                 xmin_edge+=edgeH[(xmin-1)*80+640+j,i]
-        if xmax_edge>xmin_edge:
-            xmax+=1
+    cell_size = 80
+    offset = 640
+    img_size = 1920
+    search_range = 2
+
+    def inBound(x, y):
+        # 1. check array bound
+        if (not 0 <= x < img_size) or (not 0 <= y < img_size):
+            return False
+
+        # 2. check if the point goes outsize of the original image
+        nx, ny, nw = H_inv @ np.array([x, y, 1])
+        nx /= nw
+        ny /= nw
+        if (not 0 <= nx < h_original) or (not 0 <= ny < w_original):
+            return False
+
+        return True
+
+    while xmax - xmin < 8:
+        xmax_edge = 0
+        xmin_edge = 0
+        for i in range(img_size):
+            for j in range(-search_range, search_range + 1):
+                next_x = (xmax + 1) * cell_size + offset + j
+                prev_x = (xmax - 1) * cell_size + offset + j
+                if inBound(next_x, i):
+                    xmax_edge += edgeH[next_x, i]
+                if inBound(prev_x, i):
+                    xmin_edge += edgeH[prev_x, i]
+
+        if xmax_edge > xmin_edge:
+            xmax += 1
         else:
-            xmin-=1
+            xmin -= 1
+
+        if debug:
+            print("%d %d" % (xmax_edge, xmin_edge))
+            open_wait_cv2_window("corners",
+                                 cv2.resize(
+                                     draw_corners(image,
+                                                  np.array([xmin, ymin, xmax, ymax]) * cell_size + offset),
+                                 (0, 0), fx=0.5, fy=0.5))
         # print(xmax,xmin)
-    while ymax-ymin<8:
-        ymax_edge=0
-        ymin_edge=0
-        for i in range(1920):
-            for j in range(-3,4):
-             if 0<=(ymax+1)*80+640+j and (ymax+1)*80+640+j<1920:
-              ymax_edge+=edgeV[i,(ymax+1)*80+640+j]
-             if 0<=(ymin-1)*80+640+j and (ymin-1)*80+640+j<1920:
-              ymin_edge+=edgeV[i,(ymin-1)*80+640+j]
-        if ymax_edge>ymin_edge:
-            ymax+=1
+
+    # noinspection DuplicatedCode
+    while ymax - ymin < 8:
+        ymax_edge = 0
+        ymin_edge = 0
+        for i in range(img_size):
+            for j in range(-search_range, search_range + 1):
+                next_y = (ymax + 1) * cell_size + offset + j
+                prev_y = (ymax - 1) * cell_size + offset + j
+                if inBound(i, next_y):
+                    ymax_edge += edgeH[i, next_y]
+                if inBound(i, prev_y):
+                    ymin_edge += edgeH[i, prev_y]
+
+        if ymax_edge > ymin_edge:
+            ymax += 1
         else:
-            ymin-=1
+            ymin -= 1
+
+        if debug:
+            print("%d %d" % (ymax_edge, ymin_edge))
+            open_wait_cv2_window("corners",
+                                 cv2.resize(
+                                     draw_corners(image,
+                                                  np.array([xmin, ymin, xmax, ymax]) * cell_size + offset),
+                                     (0, 0), fx=0.5, fy=0.5))
+        # print(xmax,xmin)
 
     print((xmin, ymin, xmax, ymax))
     # convert to real coordinate on 1920 x 1920 image
-    return np.array((xmin, ymin, xmax, ymax)) * 80 + 640
+    return np.array((xmin, ymin, xmax, ymax)) * cell_size + offset
 
 # input: image
 # output: homography, xmax, ymax
@@ -301,6 +347,8 @@ def detect_board(image, debug=False):
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.blur(img_gray, (3, 3))
 
+    h, w = img_blur.shape
+
     # this xmax, ymax is prematurely computed board boarder (right-bottom lines)
     # to convert to real coordinate: xmax * 80 + 640
     homography, xmax, ymax = get_homography_from_image(img_blur, debug=debug)
@@ -310,7 +358,8 @@ def detect_board(image, debug=False):
 
     warped_image = cv2.warpPerspective(img_blur, homography, (1920, 1920))
 
-    corners = get_board(warped_image, int(xmax), int(ymax), debug=debug)
+    H_inv = np.linalg.inv(homography)
+    corners = get_board(warped_image, int(xmax), int(ymax), H_inv, h, w, debug=debug)
     print(corners)
 
     return warped_image, homography, corners

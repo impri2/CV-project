@@ -113,7 +113,7 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
             if len(max_inlier_set)>N//2:
                 break
 
-    iter = 300
+    iter = 500
     for x in range(iter):
         if len(max_inlier_set) > N//2:
             break
@@ -211,9 +211,8 @@ def cluster_lines(lines):
 # rectified 이미지로 보드 위치 구하기
 # returns real corner coordinate (x1, y1, x2, y2) on 1920x1920 image
 def get_board(image, canny, xmax, ymax, debug=False):
-    # edgeH = canny_h(image, debug=debug)
-    # edgeV = canny_v(image, debug=debug)
-    
+    edge_h, edge_v = isolate_edge(canny, debug=debug)
+
     xmin=0
     ymin=0
     cell_size = 80
@@ -239,9 +238,9 @@ def get_board(image, canny, xmax, ymax, debug=False):
                 next_x = (xmax + 1) * cell_size + offset + j
                 prev_x = (xmin - 1) * cell_size + offset + j
                 if inBound(i, next_x):
-                    xmax_edge += canny[i, next_x]
+                    xmax_edge += edge_v[i, next_x]
                 if inBound(i, prev_x):
-                    xmin_edge += canny[i, prev_x]
+                    xmin_edge += edge_v[i, prev_x]
 
         if xmax_edge > xmin_edge:
             xmax += 1
@@ -266,9 +265,9 @@ def get_board(image, canny, xmax, ymax, debug=False):
                 next_y = (ymax + 1) * cell_size + offset + j
                 prev_y = (ymin - 1) * cell_size + offset + j
                 if inBound(next_y, i):
-                    ymax_edge += canny[next_y, i]
+                    ymax_edge += edge_h[next_y, i]
                 if inBound(prev_y, i):
-                    ymin_edge += canny[prev_y, i]
+                    ymin_edge += edge_h[prev_y, i]
 
         if ymax_edge > ymin_edge:
             ymax += 1
@@ -340,7 +339,7 @@ def detect_board(image, debug=False):
     image = resize_img(image)
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.blur(img_gray, (3, 3))
-    canny = cv2.Canny(img_blur, threshold1=120, threshold2=150)
+    canny = cv2.Canny(img_blur, threshold1=110, threshold2=120)
 
     if debug:
         open_wait_cv2_window("canny", canny)
@@ -357,7 +356,7 @@ def detect_board(image, debug=False):
     warp_size = 1920
 
     warped_image = cv2.warpPerspective(img_blur, homography, (warp_size, warp_size))
-    warped_canny = cv2.warpPerspective(canny, homography, (warp_size, warp_size))
+    warped_canny = cv2.warpPerspective(canny, homography, (warp_size, warp_size), flags=cv2.INTER_NEAREST)
 
     corners = get_board(warped_image, warped_canny, int(xmax), int(ymax), debug=debug)
     print(corners)

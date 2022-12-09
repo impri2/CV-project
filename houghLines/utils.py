@@ -134,3 +134,33 @@ def draw_lines(image, lines1, lines2):
             cv2.line(image, pt1, pt2, (0, 20 * i % 256, (255 - 20 * i) % 256), 1, cv2.LINE_AA)
 
     return image
+
+# given warped canny edge, isolate vertical ones and horizontal ones
+# https://docs.opencv.org/3.4/dd/dd7/tutorial_morph_lines_detection.html
+def isolate_edge(canny, debug=False):
+    hor = np.copy(canny)
+    ver = np.copy(canny)
+
+    cell_size = 80
+    line_len = 5
+    # want to detect lines that are at line_len
+    hor_size = line_len
+    ver_size = line_len
+
+    hor_structure = cv2.getStructuringElement(cv2.MORPH_RECT, (hor_size, 1))
+    ver_structure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, ver_size))
+
+    # apply morphology operations
+    hor = cv2.erode(hor, hor_structure)
+    hor = cv2.dilate(hor, hor_structure)
+
+    ver = cv2.erode(ver, ver_structure)
+    ver = cv2.dilate(ver, ver_structure)
+
+    if debug:
+        open_wait_cv2_window("horizontal edges",
+                             cv2.resize(hor, (0, 0), fx=0.5, fy=0.5))
+        open_wait_cv2_window("vertical edges",
+                             cv2.resize(ver, (0, 0), fx=0.5, fy=0.5))
+
+    return hor, ver

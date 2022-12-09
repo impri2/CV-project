@@ -1,5 +1,6 @@
 from board import detect_board
 from dataset import load_rendered_images
+from utils import draw_corners
 import cv2
 import os
 import sys
@@ -32,11 +33,7 @@ def main(argv):
 
         cv2.imwrite(os.path.join('homography', filename[-4:]+'.png'), warped_image)
 
-        x1, y1, x2, y2 = corners
-        cv2.line(warped_image, (x1, y1), (x2, y1), (255, 0, 255), 2)
-        cv2.line(warped_image, (x1, y1), (x1, y2), (255, 0, 255), 2)
-        cv2.line(warped_image, (x2, y1), (x2, y2), (255, 0, 255), 2)
-        cv2.line(warped_image, (x1, y2), (x2, y2), (255, 0, 255), 2)
+        warped_image = draw_corners(warped_image, corners)
 
         cv2.imwrite(os.path.join('board', filename[-4:]+'.png'), warped_image)
 

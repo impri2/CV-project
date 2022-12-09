@@ -29,7 +29,8 @@ def merge_lines(lines1,lines2):
     cluster.fit(intersections)#교점과 가까운 것기리 merge됨
     label_cnt = {}
     rho_sum = {}
-    angle_sum = {}
+    cos_sum = {}
+    sin_sum = {}
 
     # collect lines with same labels and average them
     for i in range(len(lines2)):
@@ -41,23 +42,28 @@ def merge_lines(lines1,lines2):
             if not label in label_cnt:
                 label_cnt[label] = 0
                 rho_sum[label] = 0
-                angle_sum[label] = 0
+                cos_sum[label] = 0
+                sin_sum[label] = 0
 
             label_cnt[label] += 1
-            if lines2[i][0][0] < 0: # always consider rho to be positive
-                rho_sum[label] += -lines2[i][0][0]
-                angle_sum[label] += lines2[i][0][1] + math.pi
-            else:
-                rho_sum[label] += lines2[i][0][0]
-                angle_sum[label] += lines2[i][0][1]
+            rho, theta = lines2[i][0]
+            if rho < 0: # always consider rho to be positive
+                rho = -rho
+                theta += math.pi
+
+            # to get average angle, use circular mean!
+            # https://en.wikipedia.org/wiki/Circular_mean
+            cos_sum[label] += math.cos(theta)
+            sin_sum[label] += math.sin(theta)
+            rho_sum[label] += rho
 
     # calculate average line
     for i in label_cnt:
         rho = rho_sum[i] / label_cnt[i]
-        theta = (angle_sum[i] / label_cnt[i]) % (2 * math.pi)
+        theta = math.atan2(sin_sum[i], cos_sum[i])
 
-        if theta > math.pi:
-            theta -= math.pi
+        if theta < 0:
+            theta += math.pi
             rho = -rho
 
         new_line = np.array([[rho, theta]])  # (1, 2) dimension for some reason
@@ -75,6 +81,7 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
 
     max_cell_size = 5
 
+    break_loop = False
     for X in range(len(lines1)-1):# 정렬순으로 선택하기
         for Y in range(len(lines2)-1):
             chosenLines1 = lines1[X:X+2]
@@ -105,15 +112,18 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
                     if len(inliers)>len(max_inlier_set):
                         max_inlier_set = inliers
                         max_inlier_warped = inliers_warped
-                    #최대 inlier수가 N/2에 도달할 때까지 반복
-                    if len(max_inlier_set)>N//2:
-                         break
-                if len(max_inlier_set)>N//2:
-                    break
-            if len(max_inlier_set)>N//2:
-                break
 
-    iter = 500
+                    #최대 inlier수가 N/2에 도달할 때까지 반복
+                    if len(max_inlier_set) > N // 2:
+                         break_loop = True
+                if break_loop:
+                    break
+            if break_loop:
+                break
+        if break_loop:
+            break
+
+    iter = 200
     for x in range(iter):
         if len(max_inlier_set) > N//2:
             break
@@ -135,14 +145,13 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
                 homography = get_homography_from_four_coordinates(line_intersection,sx,sy)
                 
                 for i in range(N): #모든 교점에 대해 warp
-                  
-                  warped= homography @ np.array([[intersections[i][0]],[intersections[i][1]],[1]])
-                  warped/=warped[2]
-                 
-                  dist = math.hypot(warped[0][0]-round(warped[0][0]),warped[1][0]-round(warped[1][0]))#한 칸이 1x1크기가 되도록 warp 했으므로 inlier는 좌표가 정수에 가까워야 함
-                  if dist<gamma: #가장 가까운 정수좌표로부터 거리가 gamma 이하라면 inlier에 추가
-                      inliers.append(intersections[i])
-                      inliers_warped.append((round(warped[0][0]),round(warped[1][0])))
+                    warped = homography @ np.array([[intersections[i][0]], [intersections[i][1]], [1]])
+                    warped /= warped[2]
+
+                    dist = math.hypot(warped[0][0]-round(warped[0][0]),warped[1][0]-round(warped[1][0]))#한 칸이 1x1크기가 되도록 warp 했으므로 inlier는 좌표가 정수에 가까워야 함
+                    if dist<gamma: #가장 가까운 정수좌표로부터 거리가 gamma 이하라면 inlier에 추가
+                        inliers.append(intersections[i])
+                        inliers_warped.append((round(warped[0][0]),round(warped[1][0])))
                 
                 if len(inliers)>len(max_inlier_set):
                     max_inlier_set = inliers 

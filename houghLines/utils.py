@@ -159,8 +159,8 @@ def isolate_edge(canny, debug=False):
 
     if debug:
         open_wait_cv2_window("horizontal edges",
-                             cv2.resize(hor, (0, 0), fx=0.5, fy=0.5))
+                             cv2.resize(hor, (0, 0), fx=0.3, fy=0.3))
         open_wait_cv2_window("vertical edges",
-                             cv2.resize(ver, (0, 0), fx=0.5, fy=0.5))
+                             cv2.resize(ver, (0, 0), fx=0.3, fy=0.3))
 
     return hor, ver

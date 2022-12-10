@@ -105,7 +105,17 @@ for i in range(len(tensor)):
     if cell_x < 0 or cell_y < 0 or cell_x >= 8 or cell_y >= 8:
         continue
 
-    warped_tensor[i] = numpy.array([x1, y1, x2, y2, tensor[i][4], tensor[i][5], cell_x, cell_y])
+    temp = numpy.array([x1, y1, x2, y2, tensor[i][4], tensor[i][5], cell_x, cell_y])
+
+    this_piece_already_fixed = False
+    for j in range(i):
+        if warped_tensor[j][-1] == temp[-1] and warped_tensor[j][-2] == temp[-2]:
+            this_piece_already_fixed = True
+            break
+    if this_piece_already_fixed:
+        continue
+
+    warped_tensor[i] = temp
 
     count_labels[int(tensor[i][5])] = (count_labels[int(tensor[i][5])] + 1)
 

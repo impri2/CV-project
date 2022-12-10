@@ -1,23 +1,16 @@
 # piece & board
 
 import argparse
-import os
 import numpy
 import torch
-import cv2
 
 from houghLines.board import detect_board
 from yolov7.predict import detect
 
 # visual representation
 
-import json
-import glob
 import os
 import cv2
-import numpy as np
-import copy
-import sys
 import chess
 import chess.svg
 
@@ -59,7 +52,8 @@ def overlap():
 
 tensor = detect_predict()[0]
 
-image = cv2.imread('./test_image/IMG_0159_JPG.rf.f0d34122f8817d538e396b04f2b70d33.jpg')
+image_path = './test_image/IMG_0159_JPG.rf.f0d34122f8817d538e396b04f2b70d33.jpg'
+image = cv2.imread(image_path)
 warped_image, homography, corners = detect_board(image)
 
 entire_x = corners[2] - corners[0]
@@ -69,12 +63,29 @@ warped_tensor = numpy.hstack([numpy.zeros(tensor.shape), numpy.zeros((len(tensor
 
 count_labels = numpy.zeros(13)
 limit_labels = numpy.array([0, 2, 1, 2, 8, 2, 2, 2, 1, 2, 8, 2, 2])
-chess_labels = ["bishop", "black-bishop", "black-king", "black-knight", "black-pawn", "black-queen", "black-rook", \
-                "white-bishop", "white-king", "white-knight", "white-pawn", "white-queen", "white-rook"]
+label_to_FENNotation = ['x', 'b', 'k', 'n', 'p', 'q', 'r', 'B', 'K', 'N', 'P', 'Q', 'R']
+
+# chess_labels = ["bishop", "black-bishop", "black-king", "black-knight", "black-pawn", "black-queen", "black-rook", \
+#                 "white-bishop", "white-king", "white-knight", "white-pawn", "white-queen", "white-rook"]
+
+# FENNotation = {
+#     "white-king": "K",
+#     "black-king": "k",
+#     "white-queen": "Q",
+#     "black-queen": "q",
+#     "white-rook": "R",
+#     "black-rook": "r",
+#     "white-bishop": "B",
+#     "black-bishop": "b",
+#     "white-knight": "N",
+#     "black-knight": "n",
+#     "white-pawn": "P",
+#     "black-pawn": "p"
+# }
 
 for i in range(len(tensor)):
     if count_labels[int(tensor[i][5])] > limit_labels[int(tensor[i][5])]:
-        continue
+        continue # todo 보강?
 
     x1, y1, z1 = homography @ numpy.array((tensor[i][0], tensor[i][1], 1))
     x2, y2, z2 = homography @ numpy.array((tensor[i][2], tensor[i][3], 1))
@@ -91,33 +102,18 @@ for i in range(len(tensor)):
 
     count_labels[int(tensor[i][5])] = (count_labels[int(tensor[i][5])] + 1)
 
+chessBoard = chess.Board(fen=None)
+
 for i in range(len(warped_tensor)):
-    cell_x = warped_tensor[i][6]
-    cell_y = warped_tensor[i][7]
+    cell_x = warped_tensor[i][-2]
+    cell_y = warped_tensor[i][-1]
 
-def generateChessBoardImage(board, name):
-    chessBoard = chess.Board(fen=None)
-    for i in range(8):
-        for j in range(8):
-            if board[i][j] == '':
-                continue
-            chessBoard.set_piece_at(square=chess.square(j, 7 - i),
-                                    piece=chess.Piece.from_symbol(FENNotation[board[i][j]]))
-    chessBoardImage = chess.svg.board(board=chessBoard)
-    with open(os.path.join('boards', name + '.svg'), 'w') as f:
-        f.write(chessBoardImage)
+    # todo x, y를 y, 7 - x 등으로 바꾸어야 할 수 있음. 확인할 것
 
-FENNotation = {
-    "white-king": "K",
-    "black-king": "k",
-    "white-queen": "Q",
-    "black-queen": "q",
-    "white-rook": "R",
-    "black-rook": "r",
-    "white-bishop": "B",
-    "black-bishop": "b",
-    "white-knight": "N",
-    "black-knight": "n",
-    "white-pawn": "P",
-    "black-pawn": "p"
-}
+    chessBoard.set_piece_at(square=chess.square(cell_y, 7 - cell_x),
+                            piece=chess.Piece.from_symbol(label_to_FENNotation[warped_tensor[-3]]))
+
+chessBoardImage = chess.svg.board(board=chessBoard)
+filename = image_path.split("/")[-1]
+with open(os.path.join('boards', filename + '.svg'), 'w') as f:
+    f.write(chessBoardImage)

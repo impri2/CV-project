@@ -113,8 +113,8 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
                         max_inlier_warped = inliers_warped
 
                     #최대 inlier수가 N/2에 도달할 때까지 반복
-                    if len(max_inlier_set) > N // 2:
-                         break_loop = True
+                    # if len(max_inlier_set) > N // 2:
+                    #      break_loop = True
                 if break_loop:
                     break
             if break_loop:
@@ -122,9 +122,10 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
         if break_loop:
             break
 
-    iter = 200
+    iter = 300
+    break_loop = False
     for x in range(iter):
-        if len(max_inlier_set) > N//2:
+        if break_loop:
             break
 
         #임의로 가로선 2개, 세로선 2개 선택
@@ -155,12 +156,14 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
                 if len(inliers)>len(max_inlier_set):
                     max_inlier_set = inliers 
                     max_inlier_warped = inliers_warped
+
                 #최대 inlier수가 N/2에 도달할 때까지 반복
-                if len(max_inlier_set)>N//2:
-                     break
-            if len(max_inlier_set)>N//2:
+                # if len(max_inlier_set) > N//2:
+                #     break_loop = True
+                #     break
+            if break_loop:
                 break
-        if len(max_inlier_set)>N//2:
+        if break_loop:
             break
 
     xmin, xmax, ymin, ymax = min([i[0] for i in max_inlier_warped]),\
@@ -189,7 +192,7 @@ def get_lines(canny, debug=False):
 
     # ideally, 8x8 board consists of 9+9 lines
     # but consider cluster of similar lines which are to be merged
-    max_lines = 30
+    max_lines = 40
 
     return lines[:min(max_lines,len(lines))]
 
@@ -226,7 +229,7 @@ def get_board(image, canny, xmax, ymax, debug=False):
     cell_size = 80
     offset = 640
     img_size = 1920
-    search_range = 2
+    search_range = 3
 
     def inBound(x, y):
         return 0 <= x < img_size and 0 <= y < img_size

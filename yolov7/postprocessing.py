@@ -91,7 +91,7 @@ for i in range(len(tensor)):
     y2 = tensor[i][3]
 
     x = (x1 + x2) / 2
-    y = (y1 + 2*y2) / 3 # 2:1 내분
+    y = (y1 + y2) / 2
 
     x, y, z = homography @ numpy.array((x, y, 1))
     x = x / z

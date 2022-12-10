@@ -119,7 +119,7 @@ for i in range(len(warped_tensor)):
     if label == 0:
         continue
 
-    chessBoard.set_piece_at(square=chess.square(cell_x, cell_y),
+    chessBoard.set_piece_at(square=chess.square(cell_x, 7 - cell_y),
                             piece=chess.Piece.from_symbol(label_to_FENNotation[label]))
 
 chessBoardImage = chess.svg.board(board=chessBoard)

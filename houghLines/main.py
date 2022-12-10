@@ -1,5 +1,5 @@
 from board import detect_board
-from dataset import load_rendered_images
+from dataset import load_random_images
 from utils import draw_corners
 import cv2
 import os
@@ -21,21 +21,22 @@ homography matrix 찾을 때 반복 횟수는 board.py 49번 줄의 수를 바�
 필요 라이브러리: cv2, scikit-learn, numpy, sympy
 '''
 
+# usage: python main.py image_path result_path sample_number
 def main(argv):
-    filenames, images, labels = load_rendered_images(argv[0] if len(argv) > 0 else None)
+    filenames, images = load_random_images(argv[0] ,int(argv[2]))
+    
+    t = tqdm(zip(filenames, images), total=len(filenames))
 
-    t = tqdm(zip(filenames, images, labels), total=len(filenames))
-
-    for filename, image, label in t:
+    for filename, image in t:
         t.set_description("Processing: " + filename)
 
         warped_image, H, corners = detect_board(image)
 
-        cv2.imwrite(os.path.join('homography', filename[-4:]+'.png'), warped_image)
+        #cv2.imwrite(os.path.join('homography', filename), warped_image)
 
         warped_image = draw_corners(warped_image, corners)
 
-        cv2.imwrite(os.path.join('board', filename[-4:]+'.png'), warped_image)
+        cv2.imwrite(os.path.join(argv[1], filename), warped_image)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

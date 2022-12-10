@@ -83,11 +83,19 @@ for i in range(len(tensor)):
     if count_labels[int(tensor[i][5])] > limit_labels[int(tensor[i][5])]:
         continue
 
-    x1, y1, z1 = homography @ numpy.array((tensor[i][0], tensor[i][1], 1))
-    x2, y2, z2 = homography @ numpy.array((tensor[i][2], tensor[i][3], 1))
+
+
+    x1 = tensor[i][0]
+    y1 = tensor[i][1]
+    x2 = tensor[i][2]
+    y2 = tensor[i][3]
 
     x = (x1 + x2) / 2
     y = (y1 + 2*y2) / 3 # 2:1 내분
+
+    x, y, z = homography @ numpy.array((x, y, 1))
+    x = x / z
+    y = y / z
 
     frac_x = (x - corners[0]) / entire_x
     frac_y = (y - corners[1]) / entire_y

@@ -95,8 +95,11 @@ for i in range(len(tensor)):
 
     frac_x = (x - corners[0]) / entire_x
     frac_y = (y - corners[1]) / entire_y
-    cell_x = round(8 * frac_x)
-    cell_y = round(8 * frac_y)
+    cell_x = round(8 * frac_x - 0.5)
+    cell_y = round(8 * frac_y - 0.5)
+
+    if cell_x < 0 or cell_y < 0 or cell_x >= 8 or cell_y >= 8:
+        continue # todo 체크
 
     warped_tensor[i] = numpy.array([x1, y1, x2, y2, tensor[i][4], tensor[i][5], cell_x, cell_y])
 
@@ -109,12 +112,15 @@ for i in range(len(warped_tensor)):
     cell_y = int(warped_tensor[i][-1])
     label = int(warped_tensor[i][-3])
 
+    if label == 0:
+        continue
+
     # todo x, y를 y, 7 - x 등으로 바꾸어야 할 수 있음. 확인할 것
 
-    chessBoard.set_piece_at(square=chess.square(cell_y, 7 - cell_x),
+    chessBoard.set_piece_at(square=chess.square(cell_x, cell_y),
                             piece=chess.Piece.from_symbol(label_to_FENNotation[label]))
 
 chessBoardImage = chess.svg.board(board=chessBoard)
-filename = image_path.split("/")[-1]
-with open(os.path.join('boards', filename + '.svg'), 'w') as f:
+filename = image_path.split("/")[-1].split(".jpg")[0].split(".png")[0].split(".jpeg")[0]
+with open(os.path.join(('chessboard_results/' + filename + '.svg')), 'w') as f:
     f.write(chessBoardImage)

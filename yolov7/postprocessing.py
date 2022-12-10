@@ -80,7 +80,7 @@ label_to_FENNotation = ['x', 'b', 'k', 'n', 'p', 'q', 'r', 'B', 'K', 'N', 'P', '
 # }
 
 for i in range(len(tensor)):
-    if count_labels[int(tensor[i][5])] > limit_labels[int(tensor[i][5])]:
+    if count_labels[int(tensor[i][5])] >= limit_labels[int(tensor[i][5])]:
         continue
 
 

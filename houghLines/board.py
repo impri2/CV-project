@@ -1,6 +1,5 @@
 import os
 import cv2
-import dataset
 import numpy as np
 import math
 import random
@@ -8,7 +7,7 @@ from functools import cmp_to_key
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import DBSCAN
 
-from utils import *
+from houghLines.utils import *
 
 def get_intersections(lines1,lines2):
     coordinates = []

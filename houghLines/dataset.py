@@ -2,7 +2,8 @@ import json
 import glob
 import os
 import cv2
-
+import pathlib
+import random
 def load_rendered_images(path):
     filenames=[]
     images=[]
@@ -26,3 +27,25 @@ def load_rendered_images(path):
                 break
        
     return filenames,images,labels
+def load_images(path):
+    files = glob.glob(os.path.join(path,"*.png"))
+    files.sort()
+    images=[]
+    filenames=[]
+    labels=[]
+    for i,file in enumerate(files):
+        images.append(cv2.imread(file))
+        filenames.append(pathlib.Path(file).name)
+        if i> 200:
+            break
+    return filenames,images
+def load_random_images(path,number):
+    files = glob.glob(os.path.join(path,"*.jpg"))
+    files.extend(glob.glob(os.path.join(path,"*.png")))
+    sample = random.sample(files,number)
+    images=[]
+    filenames=[]
+    for file in sample:
+        images.append(cv2.imread(file))
+        filenames.append(pathlib.Path(file).name)
+    return filenames,images

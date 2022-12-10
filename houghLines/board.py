@@ -25,7 +25,7 @@ def merge_lines(lines1,lines2):
     for line in lines2: #lines1의 임의의 선을 골라 그 선과의 교점을 구함(논문에서는 lines1의 평균을 냄)
         intersections.append(get_intersection(lines1[0][0][0],lines1[0][0][1],line[0][0],line[0][1]))
 
-    cluster = DBSCAN(eps=20, min_samples=2)
+    cluster = DBSCAN(eps=20,min_samples=2)
     cluster.fit(intersections)#교점과 가까운 것기리 merge됨
     label_cnt = {}
     rho_sum = {}
@@ -166,12 +166,17 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
                 break
         if break_loop:
             break
-
+    
     xmin, xmax, ymin, ymax = min([i[0] for i in max_inlier_warped]),\
                              max([i[0] for i in max_inlier_warped]),\
                              min([i[1] for i in max_inlier_warped]),\
                              max([i[1] for i in max_inlier_warped])
-
+    if xmax-xmin > 8:
+         xmin = (xmax+xmin)//2
+         xmax = xmin+1
+    if ymax-ymin > 8:
+         ymin = (ymax+ymin)//2
+         ymax = ymin+1 
     for i in range(len(max_inlier_warped)):
         # set xmin, ymin by moving the lines accordingly
         max_inlier_warped[i] = (max_inlier_warped[i][0] - (xmin),  max_inlier_warped[i][1] - (ymin))
@@ -183,7 +188,7 @@ def get_homography(lines1, lines2, gamma=0.02, debug=False):
 
     homography = cv2.findHomography(np.array(max_inlier_set,dtype=np.float32),
                                     80*np.array(max_inlier_warped,dtype=np.float32)+640)[0]
-   
+    
     return homography, xmax, ymax
 
 # get lines from canny edge image
@@ -241,7 +246,7 @@ def get_board(image, canny, xmax, ymax, debug=False):
                                  draw_corners(canny,
                                               np.array([xmin, ymin, xmax, ymax]) * cell_size + offset),
                                  (0, 0), fx=0.5, fy=0.5))
-
+   
     while xmax - xmin < 8:
         xmax_edge = 0
         xmin_edge = 0
@@ -337,25 +342,26 @@ def resize_img(image):
     h, w, _ = image.shape
 
     scale = math.sqrt(res / (h * w))
-    new_dim = (round(scale * w), round(scale * h)) # be cautious: format is (width, height)
+    new_dim = (int(scale * w), int(scale * h)) # be cautious: format is (width, height)
 
-    return cv2.resize(image, new_dim, interpolation=cv2.INTER_AREA), scale
+    return cv2.resize(image, new_dim, interpolation=cv2.INTER_AREA)
 
 # output: warp_image, homography, corner_coordinates
 # warped image: warped image
 # homography: 3x3 homography matrix from input image to warped image
 # corner_coordinates: four corners on the warped image (x1, y1, x2, y2)
 #                     where (x1, y1) is top-left, (x2, y2) is bottom-right corner
-def detect_board(image, result_original_scale=True, debug=False):
+def detect_board(image, debug=False):
     # apply some preprocessing
-    image, scale = resize_img(image)
-
+    image = resize_img(image)
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     img_blur = cv2.blur(img_gray, (3, 3))
     canny = cv2.Canny(img_blur, threshold1=110, threshold2=120)
 
     if debug:
         open_wait_cv2_window("canny", canny)
+
+    h, w = img_blur.shape
 
     # this xmax, ymax is prematurely computed board boarder (right-bottom lines)
     # to convert to real coordinate: xmax * 80 + 640
@@ -371,35 +377,6 @@ def detect_board(image, result_original_scale=True, debug=False):
 
     corners = get_board(warped_image, warped_canny, int(xmax), int(ymax), debug=debug)
     print(corners)
-
-    # scale homography and corners to the original image size
-    if result_original_scale:
-        homography = homography @ np.array([[scale, 0, 0],
-                                            [0, scale, 0],
-                                            [0,     0, 1]])
-
-        if debug:
-            h, w = img_gray.shape
-
-            new_dim = (round(w / scale), round(h / scale))  # be cautious: format is (width, height)
-            # convert back to original (not exactly the same)
-            image = cv2.resize(image, new_dim, interpolation=cv2.INTER_AREA)
-
-            x = np.array([corners[0], corners[2]])
-            y = np.array([corners[1], corners[3]])
-            H_inv = np.linalg.inv(homography)
-
-            for i in range(0, 2):
-                for j in range(0, 2):
-                    px = x[i]
-                    py = y[j]
-                    px, py, w = H_inv @ np.array([px, py, 1])
-                    px /= w
-                    py /= w
-                    px = int(px)
-                    py = int(py)
-                    cv2.circle(image, (px, py), 3, (0, 0, 255), -1)
-            open_wait_cv2_window("corner", image)
 
     return warped_image, homography, corners
 

@@ -55,6 +55,8 @@ warped_tensor = numpy.hstack([numpy.zeros(tensor.shape), numpy.zeros((len(tensor
 
 count_labels = numpy.zeros(13)
 limit_labels = numpy.array([0, 2, 1, 2, 8, 2, 2, 2, 1, 2, 8, 2, 2])
+chess_labels = ["bishop", "black-bishop", "black-king", "black-knight", "black-pawn", "black-queen", "black-rook", \
+                "white-bishop", "white-king", "white-knight", "white-pawn", "white-queen", "white-rook"]
 
 for i in range(len(tensor)):
     if count_labels[int(tensor[i][5])] > limit_labels[int(tensor[i][5])]:
@@ -74,4 +76,10 @@ for i in range(len(tensor)):
     warped_tensor[i] = numpy.array([x1, y1, x2, y2, tensor[i][4], tensor[i][5], cell_x, cell_y])
 
     count_labels[int(tensor[i][5])] = (count_labels[int(tensor[i][5])] + 1)
+
+chessboard = numpy.zeros((8, 8))
+for i in range(len(warped_tensor)):
+    x = warped_tensor[i][6]
+    y = warped_tensor[i][7]
+
 

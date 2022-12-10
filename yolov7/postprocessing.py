@@ -1,3 +1,5 @@
+# piece & board
+
 import argparse
 import os
 import numpy
@@ -6,6 +8,18 @@ import cv2
 
 from houghLines.board import detect_board
 from yolov7.predict import detect
+
+# visual representation
+
+import json
+import glob
+import os
+import cv2
+import numpy as np
+import copy
+import sys
+import chess
+import chess.svg
 
 def detect_predict():
     parser = argparse.ArgumentParser()
@@ -77,9 +91,33 @@ for i in range(len(tensor)):
 
     count_labels[int(tensor[i][5])] = (count_labels[int(tensor[i][5])] + 1)
 
-chessboard = numpy.zeros((8, 8))
 for i in range(len(warped_tensor)):
-    x = warped_tensor[i][6]
-    y = warped_tensor[i][7]
+    cell_x = warped_tensor[i][6]
+    cell_y = warped_tensor[i][7]
 
+def generateChessBoardImage(board, name):
+    chessBoard = chess.Board(fen=None)
+    for i in range(8):
+        for j in range(8):
+            if board[i][j] == '':
+                continue
+            chessBoard.set_piece_at(square=chess.square(j, 7 - i),
+                                    piece=chess.Piece.from_symbol(FENNotation[board[i][j]]))
+    chessBoardImage = chess.svg.board(board=chessBoard)
+    with open(os.path.join('boards', name + '.svg'), 'w') as f:
+        f.write(chessBoardImage)
 
+FENNotation = {
+    "white-king": "K",
+    "black-king": "k",
+    "white-queen": "Q",
+    "black-queen": "q",
+    "white-rook": "R",
+    "black-rook": "r",
+    "white-bishop": "B",
+    "black-bishop": "b",
+    "white-knight": "N",
+    "black-knight": "n",
+    "white-pawn": "P",
+    "black-pawn": "p"
+}

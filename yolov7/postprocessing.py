@@ -57,6 +57,9 @@ count_labels = numpy.zeros(13)
 limit_labels = numpy.array([0, 2, 1, 2, 8, 2, 2, 2, 1, 2, 8, 2, 2])
 
 for i in range(len(tensor)):
+    if count_labels[int(tensor[i][5])] > limit_labels[int(tensor[i][5])]:
+        continue
+
     x1, y1, z1 = homography @ numpy.array((tensor[i][0], tensor[i][1], 1))
     x2, y2, z2 = homography @ numpy.array((tensor[i][2], tensor[i][3], 1))
 
@@ -71,8 +74,4 @@ for i in range(len(tensor)):
     warped_tensor[i] = numpy.array([x1, y1, x2, y2, tensor[i][4], tensor[i][5], cell_x, cell_y])
 
     count_labels[int(tensor[i][5])] = (count_labels[int(tensor[i][5])] + 1)
-
-for i in range(13):
-    if count_labels[i] > limit_labels[i]:
-        print("exceed")
 

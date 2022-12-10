@@ -105,13 +105,14 @@ for i in range(len(tensor)):
 chessBoard = chess.Board(fen=None)
 
 for i in range(len(warped_tensor)):
-    cell_x = warped_tensor[i][-2]
-    cell_y = warped_tensor[i][-1]
+    cell_x = int(warped_tensor[i][-2])
+    cell_y = int(warped_tensor[i][-1])
+    label = int(warped_tensor[i][-3])
 
     # todo x, y를 y, 7 - x 등으로 바꾸어야 할 수 있음. 확인할 것
 
     chessBoard.set_piece_at(square=chess.square(cell_y, 7 - cell_x),
-                            piece=chess.Piece.from_symbol(label_to_FENNotation[warped_tensor[-3]]))
+                            piece=chess.Piece.from_symbol(label_to_FENNotation[label]))
 
 chessBoardImage = chess.svg.board(board=chessBoard)
 filename = image_path.split("/")[-1]

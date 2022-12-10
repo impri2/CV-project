@@ -46,10 +46,6 @@ def detect_predict():
     return a
 
 
-def overlap():
-    print("todo") # todo
-
-
 tensor = detect_predict()[0]
 
 image_path = './test_image/IMG_0159_JPG.rf.f0d34122f8817d538e396b04f2b70d33.jpg'
@@ -85,7 +81,7 @@ label_to_FENNotation = ['x', 'b', 'k', 'n', 'p', 'q', 'r', 'B', 'K', 'N', 'P', '
 
 for i in range(len(tensor)):
     if count_labels[int(tensor[i][5])] > limit_labels[int(tensor[i][5])]:
-        continue # todo 보강?
+        continue
 
     x1, y1, z1 = homography @ numpy.array((tensor[i][0], tensor[i][1], 1))
     x2, y2, z2 = homography @ numpy.array((tensor[i][2], tensor[i][3], 1))
@@ -99,7 +95,7 @@ for i in range(len(tensor)):
     cell_y = round(8 * frac_y - 0.5)
 
     if cell_x < 0 or cell_y < 0 or cell_x >= 8 or cell_y >= 8:
-        continue # todo 체크
+        continue
 
     warped_tensor[i] = numpy.array([x1, y1, x2, y2, tensor[i][4], tensor[i][5], cell_x, cell_y])
 
@@ -114,8 +110,6 @@ for i in range(len(warped_tensor)):
 
     if label == 0:
         continue
-
-    # todo x, y를 y, 7 - x 등으로 바꾸어야 할 수 있음. 확인할 것
 
     chessBoard.set_piece_at(square=chess.square(cell_x, cell_y),
                             piece=chess.Piece.from_symbol(label_to_FENNotation[label]))

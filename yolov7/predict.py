@@ -194,6 +194,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_image")
 weights = r"runs\train\yolov7_multi_res10\weights\best.pt"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-with torch.no_grad():
-    a = detect(weights, source, device)
-print(a)
+
+def do_detect():
+    with torch.no_grad():
+        a = detect(weights, source, device)
+    return a

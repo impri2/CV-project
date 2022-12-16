@@ -235,7 +235,7 @@ def get_board(image, canny, xmax, ymax, debug=False):
     cell_size = 80
     offset = 640
     img_size = 1920
-    search_range = 3
+    search_range = 7
 
     def inBound(x, y):
         return 0 <= x < img_size and 0 <= y < img_size

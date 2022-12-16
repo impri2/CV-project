@@ -1,0 +1,9 @@
+
+*.xml
+*.iml
+*.pyc
+*.pyc
+*.pyc
+yolov7/utils/plots.py
+*.pyc
+yolov7/utils/__pycache__/autoanchor.cpython-39.pyc

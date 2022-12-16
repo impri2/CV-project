@@ -1,0 +1,6 @@
+
+train: /content/drive/MyDrive/YOLO/yolov7/chesspiece_dataset/train/images
+val: /content/drive/MyDrive/YOLO/yolov7/chesspiece_dataset/valid/images
+
+nc: 13
+names: ['bishop', 'black-bishop', 'black-king', 'black-knight', 'black-pawn', 'black-queen', 'black-rook', 'white-bishop', 'white-king', 'white-knight', 'white-pawn', 'white-queen', 'white-rook']

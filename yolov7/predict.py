@@ -2,7 +2,7 @@ import argparse
 import time
 from pathlib import Path
 import os
-
+import shutil
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
@@ -16,7 +16,7 @@ from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
 
-def detect(weights, source, device, save_img=False):
+def detect(weights, source, device, opt, save_img=False):
     view_img, save_txt, imgsz, trace = opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
@@ -168,34 +168,42 @@ def detect(weights, source, device, save_img=False):
 
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--weights', nargs='+', type=str, default='yolov7.pt', help='model.pt path(s)')
-parser.add_argument('--source', type=str, default='inference/images', help='source')  # file/folder, 0 for webcam
-parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
-parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
-parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
-parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-parser.add_argument('--view-img', action='store_true', help='display results')
-parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
-parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
-parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
-parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --class 0, or --class 0 2 3')
-parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
-parser.add_argument('--augment', action='store_true', help='augmented inference')
-parser.add_argument('--project', default='runs/detect', help='save results to project/name')
-parser.add_argument('--name', default='exp', help='save results to project/name')
-parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
-parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
-opt = parser.parse_args()
 
     #check_requirements(exclude=('pycocotools', 'thop'))
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_image")
-weights = r"runs\train\yolov7_multi_res10\weights\best.pt"
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def do_detect():
+
+def do_detect(file_path, opt):
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    source = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_image")
+    weights = r"runs\train\yolov7_multi_res10\weights\best.pt"
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    pre_list_img = [file for file in os.listdir(source) if file.endswith(".jpg") or file.endswith(".png")]
+    for pre in pre_list_img:
+        os.remove(os.path.join(source, pre))
+    destination = os.path.join(source, os.path.basename(file_path))
+    shutil.copyfile(file_path, destination)
+    
+    """parser = argparse.ArgumentParser()
+    parser.add_argument('--weights', nargs='+', type=str, default='yolov7.pt', help='model.pt path(s)')
+    parser.add_argument('--source', type=str, default='inference/images', help='source')  # file/folder, 0 for webcam
+    parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
+    parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
+    parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
+    parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--view-img', action='store_true', help='display results')
+    parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
+    parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
+    parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
+    parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --class 0, or --class 0 2 3')
+    parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
+    parser.add_argument('--augment', action='store_true', help='augmented inference')
+    parser.add_argument('--project', default='runs/detect', help='save results to project/name')
+    parser.add_argument('--name', default='exp', help='save results to project/name')
+    parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
+    parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
+    opt = parser.parse_args()"""
+
     with torch.no_grad():
-        a = detect(weights, source, device)
+        a = detect(weights, source, device, opt)
     return a
